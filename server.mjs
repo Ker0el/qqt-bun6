@@ -2,6 +2,7 @@
 import http from 'node:http';
 import { readFile, mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { randomBytes } from 'node:crypto';
 import os from 'node:os';
@@ -12,9 +13,12 @@ const root = path.join(path.dirname(fileURLToPath(import.meta.url)), 'public');
 const map = JSON.parse(await readFile(path.join(root, 'assets/map.json'), 'utf8'));
 const rooms = new Map();
 const lobbyChat=[];
+// 部署侧配置：.runtime/config.json 优先于环境变量，便于在无法注入 env 的托管环境（如宝塔）下设置来源校验
+let fileConfig={};
+try { fileConfig=JSON.parse(readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), '.runtime/config.json'),'utf8')); } catch {}
 const mime = { '.html': 'text/html; charset=utf-8', '.css': 'text/css', '.mjs': 'text/javascript', '.js': 'text/javascript', '.png': 'image/png', '.json': 'application/json', '.wav': 'audio/wav', '.ogg': 'audio/ogg', '.ico': 'image/x-icon' };
-const port = Number(process.env.PORT || 8787);
-const publicOrigin=process.env.PUBLIC_ORIGIN?.replace(/\/$/,'')||'';
+const port = Number(fileConfig.port || process.env.PORT || 8787);
+const publicOrigin=String(fileConfig.publicOrigin ?? process.env.PUBLIC_ORIGIN ?? '').replace(/\/$/,'');
 const addresses = Object.entries(os.networkInterfaces()).flatMap(([name, entries]) => entries.map(x => ({...x,name})))
   .filter(x => x.family === 'IPv4' && !x.internal && /^(192\.168\.|10\.|172\.(1[6-9]|2\d|3[01])\.)/.test(x.address))
   .sort((a,b) => Number(/virtual|vethernet|docker|wsl/i.test(a.name))-Number(/virtual|vethernet|docker|wsl/i.test(b.name)))
