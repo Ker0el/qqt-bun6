@@ -6,7 +6,7 @@ const manifest = await fetch('/assets/manifest.json').then(r => r.json());
 const map = await fetch('/assets/map.json').then(r => r.json());
 const images = new Map(); let loaded = 0;
 await Promise.all(Object.entries(manifest).map(([key, meta]) => new Promise((resolve, reject) => {
-  const image = new Image(); image.onload = () => { images.set(key, image); loaded++; $('load-progress').textContent = `${loaded} / ${Object.keys(manifest).length}  原版素材`; resolve(); };
+  const image = new Image(); image.onload = () => { images.set(key, image); loaded++; $('load-progress').textContent = `正在加载素材中... ${loaded} / ${Object.keys(manifest).length}`; resolve(); };
   image.onerror = () => reject(new Error(`无法加载 ${meta.src}`)); image.src = meta.src;
 }))).catch(err => { $('load-progress').textContent = err.message; throw err; });
 $('loading').hidden = true; $('home-panel').hidden = false;
