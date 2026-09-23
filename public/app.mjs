@@ -1,4 +1,4 @@
-import { Match, RULES, DIR } from './engine.mjs';
+import { Match, RULES, DIR, hydratePlayers } from './engine.mjs';
 
 const $ = id => document.getElementById(id);
 const canvas = $('game'), ctx = canvas.getContext('2d');
@@ -16,7 +16,8 @@ let state = demo.snapshot(), socket, myId = null, roomCode = null, hostId = null
 let sequence = 0, keys = [], seenEvent = 0, localEffects = [], debug = false;
 let sound = true, bgm, toastTimer, lastStateAt = performance.now(), previousFrame = performance.now();
 let rendered = new Map(), countdownSound = false, lastUI = '', reconnectTimer;
-// 服务器只在砖块变化时下发 blocks，客户端缓存上一份
+// 服务器省略空值/默认值字段以压缩快照，这里按引擎给出的同一套默认值补齐，
+// 否则 undefined 会让 `carry !== null`、`trappedUntil - RULES.trap` 之类的判断失真。
 let blocksCache = null;
 const blocks = () => blocksCache || state.blocks;
 let directory={online:0,rooms:[]};
@@ -78,6 +79,7 @@ function connect() {
     }
     if (msg.type === 'state') {
       if (msg.blocks) blocksCache = msg.blocks;
+      hydratePlayers(msg.players);
       state = msg; hostId = msg.host; lastStateAt = performance.now();
       for (const event of msg.events) if (event.id > seenEvent) { handleEvent(event); seenEvent = event.id; }
       updateUI();

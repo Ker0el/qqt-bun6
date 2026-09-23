@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { WebSocket } from 'ws';
+import { hydratePlayers } from '../public/engine.mjs';
 const cwd=new URL('..',import.meta.url);
 const delay=ms=>new Promise(r=>setTimeout(r,ms));
 
@@ -13,7 +14,7 @@ test('two independent clients join, ready, move, bomb, reject late join, and tra
     await new Promise((resolve,reject)=>{server.stdout.once('data',resolve);server.once('error',reject);server.once('exit',code=>reject(new Error(`server exit ${code}`)))});
     const connect=async()=>{
       const ws=new WebSocket(`ws://localhost:${port}`);const c={ws,messages:[],state:null,id:null};clients.push(c);
-      ws.on('message',raw=>{const m=JSON.parse(raw);c.messages.push(m);if(m.type==='state')c.state=m;if(m.type==='hello')c.id=m.id});
+      ws.on('message',raw=>{const m=JSON.parse(raw);if(m.type==='state')hydratePlayers(m.players);c.messages.push(m);if(m.type==='state')c.state=m;if(m.type==='hello')c.id=m.id});
       await new Promise(r=>ws.once('open',r));return c;
     };
     const wait=async(c,predicate)=>{for(let i=0;i<100;i++){const found=c.messages.find(predicate);if(found)return found;await delay(30)}throw Error('Timed out waiting for protocol state')};

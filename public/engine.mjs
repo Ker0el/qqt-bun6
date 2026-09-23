@@ -6,6 +6,23 @@ export const RULES = Object.freeze({ tick: 1 / 120, round: 240, fuse: 3.001,
   phaseDuration: .15, radius: 19/40, cornerTolerance: 6/40, maxPlayers: 8 });
 export const DIR = { right: [1, 0, 0], up: [0, -1, 1], left: [-1, 0, 2], down: [0, 1, 3] };
 export const cell = (x, y) => `${x},${y}`;
+
+// 快照补齐用的规范玩家形状。借用原型调用 makePlayer，避免模块级时序与地图依赖。
+let _playerShape = null;
+export function playerDefaults() {
+  if (_playerShape) return _playerShape;
+  const p = Object.create(Match.prototype).makePlayer('', '', 0);
+  _playerShape = {};
+  for (const k of Object.keys(p)) if (!['input', 'actions', 'passes', 'wallPasses'].includes(k)) _playerShape[k] = p[k];
+  return _playerShape;
+}
+// 把 Match.compact() 省略掉的字段按默认值补回，客户端与测试共用
+export function hydratePlayers(players) {
+  if (!players) return players;
+  const d = playerDefaults();
+  for (const p of players) for (const k in d) if (p[k] === undefined) p[k] = d[k];
+  return players;
+}
 // Native leading edge is +/-19 px. The sprite anchor (50,64) puts its feet
 // at the bottom of that grid cell; every imported frame fits these bounds.
 export const ARENA_BOUNDS = Object.freeze({ left: .5, right: 14.5, top: .5, bottom: 12.5 });
@@ -25,14 +42,32 @@ export class Match {
   random() { this.seed = (Math.imul(this.seed, 1664525) + 1013904223) >>> 0; return this.seed / 4294967296; }
   event(type, data = {}) { this.events.push({ id: ++this.serial, type, time: this.time, ...data }); this.events = this.events.slice(-50); }
   setBlock(x, y, value) { this.blocks[y * 15 + x] = value; this.rev.blocks++; }
-  addPlayer(id, name, team) {
-    const p = { id, name, team, ready: false, x: 0, y: 0, dir: 'down', moving: false,
+  // 快照压缩：省略空值/默认值字段，可省掉约一半体积。
+  // 客户端必须按同样的默认值补齐（见 app.mjs 的 hydrate），否则 undefined 会让
+  // `carry !== null` 之类的判断失真。
+  static compact(o) {
+    const out = {};
+    for (const k in o) {
+      const v = o[k];
+      if (v === null || v === undefined || v === false || v === '') continue;
+      if (Array.isArray(v)) { if (v.length) out[k] = v; continue; }
+      if (typeof v === 'object') { const c = Match.compact(v); if (Object.keys(c).length) out[k] = c; continue; }
+      out[k] = v;
+    }
+    return out;
+  }
+  // 玩家对象的唯一构造入口：addPlayer 与快照补齐共用，避免两处默认值漂移
+  makePlayer(id, name, team) {
+    return { id, name, team, ready: false, x: 0, y: 0, dir: 'down', moving: false,
       input: { dir: null }, actions: [], status: 'alive', speed: RULES.speed,
       capacity: RULES.capacity, power: RULES.power, carry: null,
       trappedUntil: 0, respawnAt: 0, shieldUntil: 0, phaseUntil: 0,
       activation: null, passes: [], wallPasses: [], onWall: null,
       captures: 0, kills: 0, deaths: 0, phaseCount: 0, wallCount: 0,
       inHouse: null, skin: 'classic',mods:{bombs:false,speed:false,power:false,invincible:false,noclip:false,reveal:false},lastBomb: -10, lastSequence: -1 };
+  }
+  addPlayer(id, name, team) {
+    const p = this.makePlayer(id, name, team);
     this.players.push(p); this.spawn(p); return p;
   }
   spawn(p) {
@@ -575,6 +610,6 @@ export class Match {
       blocksRevision: this.rev.blocks, blocks: includeBlocks ? this.blocks : undefined,
       bombs: this.bombs, flames: this.flames,
       items: this.items,hiddenItems:this.players[0]&&this.trainingEnabled(this.players[0],'reveal')?this.hiddenItems.filter(i=>this.blockAt(i.x,i.y)>0):[],buns: this.buns, events: this.events.slice(-24),
-      players: this.players.map(({ input, actions, lastSequence, passes, wallPasses, mountTarget, ...p }) => p) };
+      players: this.players.map(({ input, actions, lastSequence, passes, wallPasses, mountTarget, ...p }) => Match.compact(p)) };
   }
 }
