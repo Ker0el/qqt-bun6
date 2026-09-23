@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 import http from 'node:http';
 import { readFile, mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
