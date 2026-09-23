@@ -15,6 +15,11 @@ const demo = new Match(map);
 let state = demo.snapshot(), socket, myId = null, roomCode = null, hostId = null;
 let sequence = 0, keys = [], seenEvent = 0, localEffects = [], debug = false;
 let sound = true, bgm, toastTimer, lastStateAt = performance.now(), previousFrame = performance.now();
+// 本机玩家视觉预测：按住方向键时立即位移，服务器确认后平滑收敛。
+// maxLead 限制视觉位置最多超前权威位置多少格（0.75 格≈30px，足以消除往返延迟的粘滞感，
+// 又不会在撞墙时滑出去）；reconcile 越大归位越快，过大则收敛会显得突兀。
+const PREDICT = { speed: RULES.speed, maxLead: .75, reconcile: 8 };
+let predicted = null;
 let rendered = new Map(), countdownSound = false, lastUI = '', reconnectTimer;
 // 服务器省略空值/默认值字段以压缩快照，这里按引擎给出的同一套默认值补齐，
 // 否则 undefined 会让 `carry !== null`、`trappedUntil - RULES.trap` 之类的判断失真。
@@ -74,7 +79,7 @@ function connect() {
     if (msg.type === 'pong') $('latency').textContent = `${Math.round(performance.now()-msg.sent)} ms`;
     if (msg.type === 'error') { toast(msg.message); resetButtons(); }
     if (msg.type === 'joined') {
-      roomCode = msg.room; myId = msg.id; seenEvent = 0; rendered.clear(); lastUI = ''; keys = []; sequence = 0;
+      roomCode = msg.room; myId = msg.id; seenEvent = 0; rendered.clear(); lastUI = ''; keys = []; sequence = 0; predicted = null;
       localStorage.setItem('qqt-name', $('nickname').value.trim()); updateMusic(); resetButtons();
     }
     if (msg.type === 'state') {
@@ -109,7 +114,7 @@ function renderLobby(){
   }
 }
 function resetHome() {
-  roomCode=null;state=demo.snapshot();keys=[];rendered.clear();localEffects=[];updateMusic();
+  roomCode=null;state=demo.snapshot();keys=[];rendered.clear();localEffects=[];predicted=null;blocksCache=null;updateMusic();
   $('home-panel').hidden=false; $('room-panel').hidden=true; $('result-panel').hidden=true;
   $('practice-tools').hidden=true; $('leave-game').hidden=true; $('footer-status').textContent='抢走对方的包子，带回自己的包子铺。'; resetButtons();
   $('death-screen').hidden=true;if($('training-dialog').open)$('training-dialog').close();
@@ -304,7 +309,24 @@ function render(now){
       const p=d.p;let pos=rendered.get(p.id);
       if(!pos||Math.hypot(pos.x-p.x,pos.y-p.y)>1.5)pos={x:p.x,y:p.y};
       else{const blend=1-Math.exp(-dt*65);pos.x+=(p.x-pos.x)*blend;pos.y+=(p.y-pos.y)*blend}
-      rendered.set(p.id,pos);playerSprite(p,OX+pos.x*T,OY+pos.y*T,now);
+      rendered.set(p.id,pos);
+      // 本机玩家：立刻按当前按键位移，消除输入往返延迟带来的粘滞感。
+      // 服务器确认后偏移自然收敛，且总量被限制在 maxLead 内 ——
+      // 即使顶着墙走也不会滑出去，最多超前一点再平滑归位。
+      let rx=pos.x, ry=pos.y;
+      if(p.id===myId&&roomCode){
+        if(!predicted)predicted={x:0,y:0};
+        if(p.status==='alive'&&keys.length){
+          const dir=keyMap[keys.at(-1)];
+          if(dir){const[dx,dy]=DIR[dir];predicted.x+=dx*PREDICT.speed*dt;predicted.y+=dy*PREDICT.speed*dt;}
+        }
+        const decay=1-Math.exp(-dt*PREDICT.reconcile);
+        predicted.x*=decay;predicted.y*=decay;
+        const m=Math.hypot(predicted.x,predicted.y);
+        if(m>PREDICT.maxLead){predicted.x*=PREDICT.maxLead/m;predicted.y*=PREDICT.maxLead/m;}
+        rx+=predicted.x;ry+=predicted.y;
+      }
+      playerSprite(p,OX+rx*T,OY+ry*T,now);
     }
   }
   for(const base of map.bases){
