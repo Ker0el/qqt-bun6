@@ -2,16 +2,16 @@
 .app button,dialog button,.app select,dialog label{cursor:url('/assets/cursor-hand.png') 4 4,pointer}
 .app input,dialog input{cursor:text}
 .app input[type=checkbox],dialog input[type=checkbox]{cursor:url('/assets/cursor-hand.png') 4 4,pointer}
-.chat-panel{position:absolute;left:1.5%;bottom:10.3%;width:73%;z-index:6;pointer-events:none;color:#e9faff;font-size:12px;text-shadow:0 1px 2px #082842}
-.chat-log{max-height:110px;overflow:hidden;line-height:1.65;padding:3px 6px}
+.chat-panel{position:absolute;left:1.5%;bottom:10.3%;width:73%;z-index:6;pointer-events:none;color:#e9faff;font-size:15px;text-shadow:0 1px 2px #082842}
+.chat-log{max-height:130px;overflow:hidden;line-height:1.6;padding:3px 6px}
 .chat-message{overflow-wrap:anywhere;animation:chat-fade 18s forwards}
 .chat-message strong{font-weight:700;color:#ffe891;margin-right:7px}
 .chat-panel.typing .chat-log{background:#082b45c9;border-radius:4px 4px 0 0;overflow-y:auto;pointer-events:auto}
 .chat-panel.typing .chat-message{animation:none}
 #chat-form{display:flex;align-items:center;gap:6px;padding:5px;background:#d4f1fc;border:1px solid #5698b7;border-radius:3px;pointer-events:auto;text-shadow:none}
-#chat-form span{font-size:11px;color:#397ca1;padding:0 3px;white-space:nowrap}
-#chat-input{flex:1;padding:6px 7px;font-size:12px;height:30px;min-width:0}
-#chat-form button{min-height:30px;padding:4px 8px}
+#chat-form span{font-size:13px;color:#397ca1;padding:0 3px;white-space:nowrap}
+#chat-input{flex:1;padding:7px 8px;font-size:15px;height:34px;min-width:0}
+#chat-form button{min-height:34px;padding:5px 9px}
 .toolbar-actions .support-button{color:#ffdc89;border-color:#c79b4966;background:#76551a22}
 .toolbar-actions .support-button:hover{background:#bc842d33}
 #support-dialog{width:356px}
@@ -20,7 +20,7 @@
 .support-content img{display:block;max-width:100%;height:auto;margin:0 auto;border-radius:5px;background:#fff}
 .support-content .support-note{margin:12px 0 0;font-size:11px;color:#789aaa}
 @keyframes chat-fade{0%,65%{opacity:1}100%{opacity:.3}}
-@media(max-width:760px){.chat-panel{font-size:10px}.chat-log{max-height:70px}.toolbar-actions{flex-wrap:wrap}}
+@media(max-width:760px){.chat-panel{font-size:13px}.chat-log{max-height:96px}.toolbar-actions{flex-wrap:wrap}}
 @font-face{font-family:QQTangSong;src:url('/assets/simsun.ttc') format('collection');font-display:swap}
 @font-face{font-family:QQTangCentury;src:url('/assets/century.ttf') format('truetype');font-display:swap}
 body,button,input,select{font-family:QQTangSong,'Microsoft YaHei',sans-serif}

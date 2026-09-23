@@ -370,7 +370,7 @@ function render(now){
   }
   for(const p of state.players){
     const age=state.time-(p.respawnAt-RULES.respawn);
-    if(p.status==='dead'&&age>=0&&age<2){sprite('death-cry',OX+p.x*T-50,OY+p.y*T-64,age*2)}
+    if(p.status==='dead'&&age>=0&&age<2)sprite(p.team===0?'death-cry':'death-cry-blue',OX+p.x*T-50,OY+p.y*T-64,age*2);
     if(p.status!=='dead'&&p.emoteUntil>state.time){
       const key=`emote-${p.emote}`,m=manifest[key],pos=rendered.get(p.id)||p;
       if(m)sprite(key,OX+pos.x*T-m.w/2,Math.max(0,OY+pos.y*T-80-standingLift(p)),0);
