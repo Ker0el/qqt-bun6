@@ -27,3 +27,4 @@ body,button,input,select{font-family:QQTangSong,'Microsoft YaHei',sans-serif}
 #death-cry-overlay{display:none}
 #death-screen strong{font-family:QQTangCentury,serif}
 #death-cry-overlay{position:absolute;width:16.6667%;height:auto;pointer-events:none}
+.credit{font-size:13px}
