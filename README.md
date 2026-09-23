@@ -61,6 +61,6 @@
 
 浏览器检查：`node test/browser-smoke.mjs`、`node test/browser-training.mjs`、`node test/browser-extras.mjs`。需先启动本地服务，脚本使用本机 Chrome。
 
-公网部署文件见 `DEPLOY.md`、`Dockerfile`、`compose.yaml`。尚未发布公网；需要可运行 Node/WebSocket 的服务器或托管平台。房间当前保存在单个进程内，重启会结束对局。
+公网部署文件见 `DEPLOY.md`、`Dockerfile`、`compose.yaml`。**已上线**：`https://play.example.com`（服务器 `<SERVER_IP>`，宝塔面板 Node 项目托管，代码走 GitHub 私有仓库）。房间当前保存在单个进程内，重启会结束对局。
 
 这是持续校准中的复刻开发版，仍未完成所有原版穿技变体和最终客户端的逐帧一致性验证。旧网络攻略和客户端逆向资料的部分参数存在冲突，记录见 `REFERENCES.md`。第三方美术与音频权属仍属于原权利人。
