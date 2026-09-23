@@ -24,7 +24,9 @@ let rendered = new Map(), countdownSound = false, lastUI = '', reconnectTimer;
 // 服务器省略空值/默认值字段以压缩快照，这里按引擎给出的同一套默认值补齐，
 // 否则 undefined 会让 `carry !== null`、`trappedUntil - RULES.trap` 之类的判断失真。
 let blocksCache = null;
-const blocks = () => blocksCache || state.blocks;
+// 服务器按需下发 blocks，所以缓存为空时回退到原始地图（demo 快照的 blocks 就是 map.blocks）。
+// 绝不能返回 undefined —— 渲染循环用 blocks()[y*15+x] 取值，一旦抛异常整个画面会只剩背景。
+const blocks = () => blocksCache || state.blocks || map.blocks;
 let directory={online:0,rooms:[]};
 let chatMessages=[],lastExplosionSound=-1000;
 document.querySelector('.meter-window').style.left=`${RULES.phaseStart*100}%`;
@@ -279,9 +281,9 @@ function render(now){
   ctx.save();ctx.beginPath();ctx.rect(8,0,600,542);ctx.clip();
   for(let y=0;y<13;y++)for(let x=0;x<15;x++)sprite('tile11',OX+x*T,OY+y*T);
   for(let y=0;y<13;y++)for(let x=0;x<15;x++){const tile=map.ground[y*15+x];if(tile>0&&tile!==8011)sprite(`tile${tile-8000}`,OX+x*T,OY+y*T)}
-  for(const item of state.items){if(item.availableAt>state.time)continue;const key={capacity:'item1',power:'item2',speed:'item3',fork:'item24',banana:'item23','banana-trap':'item42',smile:'item25','smile-trap':'item25'}[item.kind];const m=manifest[key];if(m)sprite(key,OX+(item.x+.5)*T-m.w/2,OY+(item.y+.5)*T-m.h/2,now/130)}
-  for(const b of state.buns)bun(OX+(b.x+.5)*T,OY+(b.y+.5)*T,1.5,b.owner);
-  for(const f of state.flames){
+  for(const item of state.items||[]){if(item.availableAt>state.time)continue;const key={capacity:'item1',power:'item2',speed:'item3',fork:'item24',banana:'item23','banana-trap':'item42',smile:'item25','smile-trap':'item25'}[item.kind];const m=manifest[key];if(m)sprite(key,OX+(item.x+.5)*T-m.w/2,OY+(item.y+.5)*T-m.h/2,now/130)}
+  for(const b of state.buns||[])bun(OX+(b.x+.5)*T,OY+(b.y+.5)*T,1.5,b.owner);
+  for(const f of state.flames||[]){
     if(map.bases.some(b=>f.x>=b.x&&f.x<b.x+b.w&&f.y>=b.y&&f.y<b.y+b.h))continue;
     const x=OX+(f.x+.5)*T,y=OY+(f.y+.5)*T;
     const parts={right:[2,6],up:[3,7],left:[4,8],down:[5,9]};
@@ -293,11 +295,11 @@ function render(now){
     const tile=blocks()[y*15+x];if(tile>0)drawables.push({z:y+.8,type:'tile',tile:tile-8000,x,y});
     const building=map.structures[y*15+x];if(building>0)drawables.push({z:y+2.7,type:'building',tile:building-8000,x,y});
   }
-  for(const b of state.bombs){
-    const occupants=state.players.filter(p=>Math.floor(p.x)===b.x&&Math.floor(p.y)===b.y);
+  for(const b of state.bombs||[]){
+    const occupants=(state.players||[]).filter(p=>Math.floor(p.x)===b.x&&Math.floor(p.y)===b.y);
     drawables.push({z:Math.min(b.y+.35,...occupants.map(p=>p.y-.01)),type:'bomb',b});
   }
-  for(const p of state.players)if(p.status!=='dead'&&p.inHouse===null&&p.renderLayer!=='wall')drawables.push({z:p.y,type:'player',p});
+  for(const p of state.players||[])if(p.status!=='dead'&&p.inHouse===null&&p.renderLayer!=='wall')drawables.push({z:p.y,type:'player',p});
   drawables.sort((a,b)=>a.z-b.z);
   for(const d of drawables){
     if(d.type==='tile'||d.type==='building'){
@@ -351,7 +353,7 @@ function render(now){
     rendered.set(p.id,{x:p.x,y:p.y});playerSprite(p,OX+p.x*T,OY+p.y*T,now);
   }
   // Carry icons and labels are always above scenery and actor sprites.
-  for(const item of state.items){
+  for(const item of state.items||[]){
     if(!item.flight||item.availableAt<=state.time)continue;
     const f=item.flight,t=Math.max(0,Math.min(1,(state.time-f.born)/f.duration));
     const key={capacity:'item1',power:'item2',speed:'item3'}[item.kind],m=manifest[key];if(!m)continue;
