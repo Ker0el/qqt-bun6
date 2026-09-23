@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#075f97"><title>QQ堂 · 抢包山 6</title>
+  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/extras.css">
+</head>
+<body>
+  <main class="app">
+    <header class="topbar">
+      <div class="brand"><span class="brand-mark">QQ<span>堂</span></span><span class="edition">抢包山 6 <i></i> 怀旧版</span></div>
+      <div class="connection"><span id="connection-dot"></span><span id="connection-label">连接中…</span><span id="latency">— ms</span></div>
+    </header>
+    <section class="game-frame" aria-label="QQ堂游戏">
+      <div class="game-stage" id="stage">
+        <canvas id="game" width="800" height="600" tabindex="0" aria-label="抢包山6游戏画面，方向键移动，空格放泡"></canvas>
+        <div class="loading" id="loading"><b>正在打开糖果王国…</b><span id="load-progress">加载原版素材</span></div>
+        <div class="overlay" id="home-panel" hidden>
+          <div class="window-title"><span>QQ堂 · 联机大厅</span><span class="window-star">✦</span></div>
+          <div class="window-content">
+            <div class="lobby-title"><strong>抢包山 6</strong><span id="lobby-count">正在读取大厅…</span></div>
+            <label class="field">你的昵称<input id="nickname" value="糖友" maxlength="12" autocomplete="off" spellcheck="false"></label>
+            <button class="gold-button" id="create-room">创建联机房间 <span>→</span></button>
+            <div class="public-rooms" id="public-rooms" aria-label="公开房间列表"><p class="empty-lobby">暂时没有房间，来创建第一间吧。</p></div>
+            <div class="join-row"><input id="room-code" placeholder="输入 6 位房间号" inputmode="numeric" maxlength="6" aria-label="房间号"><button class="blue-button" id="join-room">加入</button></div>
+            <div class="divider"><span>也可以先找回手感</span></div>
+            <button class="practice-button" id="practice">进入单人练习场</button>
+            <p class="small-note">所有玩家共享房间列表 · 纯真人 · 红蓝人数相等后开局</p>
+          </div>
+        </div>
+        <div class="overlay room-panel" id="room-panel" hidden>
+          <div class="window-title"><span>抢包山 6 · 等待开局</span><button class="close-button" id="leave-lobby" aria-label="离开房间">×</button></div>
+          <div class="window-content">
+            <div class="room-heading"><div><span class="eyebrow">房间号</span><strong id="room-number">000000</strong></div><button class="blue-button small" id="copy-invite">复制邀请</button></div>
+            <div class="teams"><div><h3 class="red-heading">红队</h3><div id="red-roster"></div></div><div><h3 class="blue-heading">蓝队</h3><div id="blue-roster"></div></div></div>
+            <p id="room-hint" class="room-hint">等待糖友加入…</p>
+            <div class="room-actions"><button class="blue-button" id="switch-team">切换队伍</button><button class="gold-button" id="ready-button">准备</button></div>
+          </div>
+        </div>
+        <div class="overlay result-panel" id="result-panel" hidden>
+          <div class="window-title">本局结算</div><div class="window-content"><div id="result-title" class="result-title">红队获胜</div><p id="result-reason"></p><div id="result-stats"></div><button id="return-room" class="gold-button">返回房间</button></div>
+        </div>
+        <button class="canvas-leave" id="leave-game" hidden>离开</button>
+        <div id="death-screen" hidden><span>你被击破了</span><strong id="respawn-count">10</strong><small>等待复活</small></div>
+        <section id="chat-panel" class="chat-panel" aria-label="游戏聊天">
+          <div id="chat-log" class="chat-log" aria-live="polite"></div>
+          <form id="chat-form" hidden><span id="chat-scope">大厅</span><input id="chat-input" aria-label="聊天内容" maxlength="140" autocomplete="off" placeholder="回车发送，Esc 关闭"><button class="blue-button small" type="submit">发送</button></form>
+        </section>
+        <div class="toast" id="toast" role="status" hidden></div>
+      </div>
+    </section>
+    <div class="game-toolbar">
+      <div class="key-help"><kbd>↑ ↓ ← →</kbd><span>移动</span><kbd>空格</kbd><span>放泡</span><span class="wasd">也支持 WASD</span></div>
+      <div class="toolbar-actions"><select id="bubble-skin" aria-label="糖泡外观"><option value="classic">经典糖泡</option><option value="fire">火焰糖泡</option></select><button id="sound-button" title="开启或关闭声音">声音：关</button><button id="chat-button">聊天 ↵</button><button id="help-button">玩法说明</button><button id="fullscreen-button">全屏</button><button id="support-button" class="support-button">赞赏</button></div>
+    </div>
+    <section class="practice-tools" id="practice-tools" hidden>
+      <div><span class="practice-label">练习场</span><button data-drill="map" class="selected">原图自由练习</button><button data-drill="phase">穿泡练习</button><button data-drill="run">走穿练习</button><button data-drill="wall">借泡上墙</button><button data-drill="pillar">借泡上柱</button><button data-drill="wall3">转向上墙</button><button data-drill="house">包子房练习</button><button id="reset-drill">重置场景 <kbd>R</kbd></button></div>
+      <div class="drill-guide" id="drill-guide">自由移动、放泡和抢包。点击“穿泡练习”进入可重复的专项场景。</div>
+      <div class="phase-meter"><span id="phase-label">等待激活</span><div class="meter-track"><div class="meter-window"></div><div id="meter-cursor"></div></div><span id="phase-time">0.00 s</span></div>
+      <label class="debug-toggle"><input id="debug-toggle" type="checkbox"> 显示格线和判定位置</label>
+    </section>
+    <footer><span>原版地图与角色素材 · 本地运行</span><span id="footer-status">抢走对方的包子，带回自己的包子铺。</span></footer>
+  </main>
+  <dialog id="help-dialog"><div class="window-title">玩法说明<button id="close-help" class="close-button" aria-label="关闭说明">×</button></div><div class="window-content">
+    <h2>带回对方的三个包子就赢</h2><p>进入对方包子房拿包子，再带回自己的房内。每队三个包子，抢齐敌方三个并带回即获胜，不要求自己的包子全部在家。背包时减速，不能放泡。掉落的己方包子也需背回家。限时 4 分钟。</p>
+    <p>房屋四个角有碰撞并挡糖浆，中间十字通道可通行，也会被炸到。进房后模型隐藏，自己的蓝色位置箭头保持可见。</p>
+    <h3>特殊道具</h3><p>叉子：拾取后按数字 1，在被泡困住时消耗一把原地自救，死亡后不可使用。香蕉皮：拾取后按数字 2 放置，踩中后沿当前方向滑行，遇到障碍或地图边缘停止。笑脸：拾取后存入道具栏，按数字 3 放到地上，踩中者移速降至 30%，持续 5 秒。</p><h3>放泡、营救与复活</h3><p>方向键或 WASD 移动，空格放糖泡。糖泡约 3 秒引爆，会连锁引爆相邻糖泡并炸开普通砖块。毛毛初始 2 泡、1 格威力，吃道具提升属性。引爆瞬间判伤，随后残留动画不会再次伤人。被困约 5 秒会死亡，队友接触营救，敌人接触击破；死亡后透明倒计时 10 秒复活，期间可以继续观察对局。</p>
+    <p>单人训练可按 F2 打开 MOD 菜单，设置无限泡弹、速度、威力、无敌和穿墙，或观看秒赢搬包。联机房间不允许这些功能。</p>
+    <h3>穿泡与借泡上墙</h3><p>对正泡弹朝它移动，约 0.6 秒节奏放泡，再继续走。可以从几格外助跑，无需一直紧贴泡；助跑距离随速度变化。当前版本放宽了时机容错。借泡上墙或上柱，需要在有效穿势内借助相邻泡弹和合适偏位，不能无条件穿过墙。</p>
+    <p class="help-note">当前穿技是依据玩家教程重新实现的可校准版本，尚未完成与最终客户端的逐帧一致性验证。练习场里的计时提示不会出现在正式对局中。</p>
+    <p>转向上墙：按住 → 接近目标泡，约 0.6 秒节奏放泡，立即按 ↑ 借侧面的泡上墙。穿势时间随速度变化。练习场还提供独立的走穿和上柱场景。</p>
+    <h3>本地联机</h3><p>房主创建房间，朋友在同一服务地址输入房间号加入，准备后由房主开局。电脑双窗口可直接测试。局域网朋友需使用房主电脑的局域网地址。</p><div id="lan-addresses"></div>
+  </div></dialog>
+  <dialog id="training-dialog"><div class="window-title">单人训练 MOD <button id="close-training" class="close-button" aria-label="关闭训练菜单">×</button></div><div class="window-content">
+    <p>仅对当前单人训练生效。按 F2 打开或关闭。</p>
+    <div class="training-options">
+      <label><input type="checkbox" data-mod="bombs">无限泡弹</label>
+      <label><input type="checkbox" data-mod="speed">无限速度</label>
+      <label><input type="checkbox" data-mod="power">无限威力</label>
+      <label><input type="checkbox" data-mod="invincible">无敌</label>
+      <label><input type="checkbox" data-mod="noclip">穿墙</label>
+      <label><input type="checkbox" data-mod="reveal">显示墙内道具</label>
+    </div>
+    <button id="training-win" class="gold-button">秒赢 · 来回搬包</button>
+  </div></dialog>
+  <dialog id="support-dialog"><div class="window-title">赞赏支持 <button id="close-support" class="close-button" aria-label="关闭赞赏">×</button></div><div class="window-content support-content"><p>感谢支持这个怀旧项目。</p><img src="/assets/support.png" alt="赞赏码" width="300" height="300"><p class="support-note">扫码自愿赞赏</p></div></dialog>
+  <script type="module" src="/app.mjs"></script>
+</body></html>
+
+

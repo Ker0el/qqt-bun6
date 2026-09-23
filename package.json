@@ -1,0 +1,20 @@
+{
+  "name": "qqt-bun6-local",
+  "version": "0.6.0",
+  "private": true,
+  "type": "module",
+  "description": "QQ堂抢包山6本地网页复刻",
+  "scripts": {
+    "start": "node server.mjs",
+    "test": "node --test test/*.test.mjs"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "ws": "^8.21.3"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.63.0"
+  }
+}

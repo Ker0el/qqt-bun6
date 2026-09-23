@@ -1,0 +1,8 @@
+node_modules
+.runtime
+.git
+test
+tools
+*-preview.png
+*.zip
+.env
