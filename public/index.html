@@ -52,25 +52,22 @@
     </section>
     <div class="game-toolbar">
       <div class="key-help"><kbd>↑ ↓ ← →</kbd><span>移动</span><kbd>空格</kbd><span>放泡</span><span class="wasd">也支持 WASD</span></div>
-      <div class="toolbar-actions"><select id="bubble-skin" aria-label="糖泡外观"><option value="classic">经典糖泡</option><option value="fire">火焰糖泡</option></select><button id="sound-button" title="开启或关闭声音">声音：开</button><button id="chat-button">聊天 ↵</button><button id="help-button">玩法说明</button><button id="fullscreen-button">全屏</button><button id="support-button" class="support-button">赞赏</button></div>
+      <div class="toolbar-actions"><button id="sound-button" title="开启或关闭声音">声音：开</button><button id="help-button">玩法说明</button><button id="fullscreen-button">全屏</button><button id="support-button" class="support-button">打赏</button></div>
     </div>
     <section class="practice-tools" id="practice-tools" hidden>
-      <div><span class="practice-label">练习场</span><button data-drill="map" class="selected">原图自由练习</button><button data-drill="phase">穿泡练习</button><button data-drill="run">走穿练习</button><button data-drill="wall">借泡上墙</button><button data-drill="pillar">借泡上柱</button><button data-drill="wall3">转向上墙</button><button data-drill="house">包子房练习</button><button id="reset-drill">重置场景 <kbd>R</kbd></button></div>
-      <div class="drill-guide" id="drill-guide">自由移动、放泡和抢包。点击“穿泡练习”进入可重复的专项场景。</div>
-      <div class="phase-meter"><span id="phase-label">等待激活</span><div class="meter-track"><div class="meter-window"></div><div id="meter-cursor"></div></div><span id="phase-time">0.00 s</span></div>
-      <label class="debug-toggle"><input id="debug-toggle" type="checkbox"> 显示格线和判定位置</label>
+      <button id="reset-drill">重置场景 <kbd>R</kbd></button>
     </section>
-    <footer><span>原版地图与角色素材 · 本地运行</span><span id="footer-status">抢走对方的包子，带回自己的包子铺。</span></footer>
+    <footer><span id="footer-status">抢走对方全部包子并运回自己的包房，即可获胜。</span><span class="credit">QQ堂星空复刻版</span></footer>
   </main>
   <dialog id="help-dialog"><div class="window-title">玩法说明<button id="close-help" class="close-button" aria-label="关闭说明">×</button></div><div class="window-content">
-    <h2>带回对方的三个包子就赢</h2><p>进入对方包子房拿包子，再带回自己的房内。每队三个包子，抢齐敌方三个并带回即获胜，不要求自己的包子全部在家。背包时减速，不能放泡。掉落的己方包子也需背回家。限时 4 分钟。</p>
-    <p>房屋四个角有碰撞并挡糖浆，中间十字通道可通行，也会被炸到。进房后模型隐藏，自己的蓝色位置箭头保持可见。</p>
-    <h3>特殊道具</h3><p>叉子：拾取后按数字 1，在被泡困住时消耗一把原地自救，死亡后不可使用。香蕉皮：拾取后按数字 2 放置，踩中后沿当前方向滑行，遇到障碍或地图边缘停止。笑脸：拾取后存入道具栏，按数字 3 放到地上，踩中者移速降至 30%，持续 5 秒。</p><h3>放泡、营救与复活</h3><p>方向键或 WASD 移动，空格放糖泡。糖泡约 3 秒引爆，会连锁引爆相邻糖泡并炸开普通砖块。毛毛初始 2 泡、1 格威力，吃道具提升属性。引爆瞬间判伤，随后残留动画不会再次伤人。被困约 5 秒会死亡，队友接触营救，敌人接触击破；死亡后透明倒计时 10 秒复活，期间可以继续观察对局。</p>
-    <p>单人训练可按 F2 打开 MOD 菜单，设置无限泡弹、速度、威力、无敌和穿墙，或观看秒赢搬包。联机房间不允许这些功能。</p>
-    <h3>穿泡与借泡上墙</h3><p>对正泡弹朝它移动，约 0.6 秒节奏放泡，再继续走。可以从几格外助跑，无需一直紧贴泡；助跑距离随速度变化。当前版本放宽了时机容错。借泡上墙或上柱，需要在有效穿势内借助相邻泡弹和合适偏位，不能无条件穿过墙。</p>
-    <p class="help-note">当前穿技是依据玩家教程重新实现的可校准版本，尚未完成与最终客户端的逐帧一致性验证。练习场里的计时提示不会出现在正式对局中。</p>
-    <p>转向上墙：按住 → 接近目标泡，约 0.6 秒节奏放泡，立即按 ↑ 借侧面的泡上墙。穿势时间随速度变化。练习场还提供独立的走穿和上柱场景。</p>
-    <h3>本地联机</h3><p>房主创建房间，朋友在同一服务地址输入房间号加入，准备后由房主开局。电脑双窗口可直接测试。局域网朋友需使用房主电脑的局域网地址。</p><div id="lan-addresses"></div>
+    <h2>带回对方的三个包子就赢</h2>
+    <p>进入对方包子房拿包子，再带回自己房内。抢齐敌方三个包子并带回即获胜，不要求自己的包子全在家。限时 4 分钟。</p>
+    <h3>操作</h3>
+    <p>方向键或 WASD 移动，空格放糖泡。糖泡约 3 秒引爆并炸开砖块。背包时减速，不能放泡。</p>
+    <h3>道具与救援</h3>
+    <p>拾取道具可提升泡数、威力、速度；叉子、香蕉皮、笑脸按数字 1 / 2 / 3 使用。被泡困住时队友可接触营救，敌人接触则击破；阵亡 10 秒后复活。</p>
+    <h3>联机</h3>
+    <p>房主创建房间，朋友输入房间号加入，双方人数相等且都准备后由房主开局。</p><div id="lan-addresses"></div>
   </div></dialog>
   <dialog id="training-dialog"><div class="window-title">单人训练 MOD <button id="close-training" class="close-button" aria-label="关闭训练菜单">×</button></div><div class="window-content">
     <p>仅对当前单人训练生效。按 F2 打开或关闭。</p>
@@ -84,7 +81,7 @@
     </div>
     <button id="training-win" class="gold-button">秒赢 · 来回搬包</button>
   </div></dialog>
-  <dialog id="support-dialog"><div class="window-title">赞赏支持 <button id="close-support" class="close-button" aria-label="关闭赞赏">×</button></div><div class="window-content support-content"><p>感谢支持这个怀旧项目。</p><img src="/assets/support.png" alt="赞赏码" width="300" height="300"><p class="support-note">扫码自愿赞赏</p></div></dialog>
+  <dialog id="support-dialog"><div class="window-title">打赏支持 <button id="close-support" class="close-button" aria-label="关闭打赏">×</button></div><div class="window-content support-content"><p>感谢支持这个怀旧项目。</p><img src="/assets/support.png" alt="打赏码" width="300" height="300"><p class="support-note">扫码自愿打赏</p></div></dialog>
   <script type="module" src="/app.mjs"></script>
 </body></html>
 

@@ -29,8 +29,6 @@ let blocksCache = null;
 const blocks = () => blocksCache || state.blocks || map.blocks;
 let directory={online:0,rooms:[]};
 let chatMessages=[],lastExplosionSound=-1000;
-document.querySelector('.meter-window').style.left=`${RULES.phaseStart*100}%`;
-document.querySelector('.meter-window').style.width=`${(RULES.phaseEnd-RULES.phaseStart)*100}%`;
 const urlRoom = new URL(location.href).searchParams.get('room');
 if (urlRoom) $('room-code').value = urlRoom.replace(/\D/g,'').slice(0,6);
 $('nickname').value = localStorage.getItem('qqt-name') || '糖友';
@@ -60,7 +58,7 @@ function bun(x,y,s=1,owner=0){
   ctx.strokeStyle='#d6a15b';for(let i=-1;i<=1;i++){ctx.beginPath();ctx.moveTo(i*2,-4);ctx.quadraticCurveTo(i*3,-1,i*3,1);ctx.stroke()}ctx.restore();
 }
 function toast(message) { $('toast').textContent = message; $('toast').hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => $('toast').hidden = true, 3500); }
-function send(data) { if (socket?.readyState === WebSocket.OPEN) { if(data.type==='create'||data.type==='join')data.skin=$('bubble-skin').value;socket.send(JSON.stringify(data)); return true; } toast('连接尚未就绪，请稍候'); return false; }
+function send(data) { if (socket?.readyState === WebSocket.OPEN) { if(data.type==='create'||data.type==='join')data.skin='classic';socket.send(JSON.stringify(data)); return true; } toast('连接尚未就绪，请稍候'); return false; }
 function play(name, volume = .35) {
   if (!sound) return;
   const a = new Audio(`/assets/${name}`); a.volume = volume; a.play().catch(() => {});
@@ -118,7 +116,7 @@ function renderLobby(){
 function resetHome() {
   roomCode=null;state=demo.snapshot();keys=[];rendered.clear();localEffects=[];predicted=null;blocksCache=null;updateMusic();
   $('home-panel').hidden=false; $('room-panel').hidden=true; $('result-panel').hidden=true;
-  $('practice-tools').hidden=true; $('leave-game').hidden=true; $('footer-status').textContent='抢走对方的包子，带回自己的包子铺。'; resetButtons();
+  $('practice-tools').hidden=true; $('leave-game').hidden=true; $('footer-status').textContent='抢走对方全部包子并运回自己的包房，即可获胜。'; resetButtons();
   $('death-screen').hidden=true;if($('training-dialog').open)$('training-dialog').close();
   closeChat();chatMessages=[];renderChat();
 }
@@ -194,12 +192,7 @@ function updateUI() {
     }
   }
   if(state.practice){
-    const mode=state.drill||'map';
-    for(const b of document.querySelectorAll('[data-drill]'))b.classList.toggle('selected',b.dataset.drill===mode);
-    $('drill-guide').textContent=mode==='phase'?'已摆好目标糖泡。按住 ↑ 对正糖泡，约 0.6 秒时按空格，继续向上。R 重置。':mode==='wall'?'已摆好左墙右泡和偏位站位。按住 ↑ 激活，约 0.6 秒时按空格，继续向上借泡进入墙格。R 重置。':mode==='wall3'?'按住 → 激活面前的泡，约 0.6 秒时先按空格，再立即按 ↑ 转向上墙。先转向后放泡或转向过晚会失败。R 重置。':'自由移动、放泡和抢包。毛毛初始 2 泡；可以借自己的泡练习，或进入专项场景。';
-    if(mode==='house')$('drill-guide').textContent='四角有碰撞并挡火，中间通道能进入但不挡火；进房后模型隐藏，蓝色箭头标记自己的位置。';
-    if(mode==='run')$('drill-guide').textContent='按住 ↑ 从远处跑向泡弹，约 0.6 秒节奏按空格，继续向前穿过；无需先贴住泡。速度越快，助跑距离越长。';
-    if(mode==='pillar')$('drill-guide').textContent='按住 ↑ 接近柱旁糖泡，约 0.6 秒节奏按空格，保持方向借泡上柱。没有泡弹提供穿势就不能上柱。';
+    $('footer-status').textContent='按 R 重置场景';
   }
 }
 function nickname(){return $('nickname').value.trim()||'糖友'}
@@ -215,16 +208,11 @@ $('copy-invite').onclick=async()=>{
   try{await navigator.clipboard.writeText(`${location.origin}/?room=${roomCode}`);toast('邀请链接已复制；局域网朋友请使用房主局域网地址')}
   catch{toast(`房间号：${roomCode}`)}
 };
-for(const b of document.querySelectorAll('[data-drill]'))b.onclick=()=>{release();send({type:'drill',mode:b.dataset.drill});canvas.focus()};
-$('reset-drill').onclick=()=>{release();send({type:'drill',mode:state.drill||'map'});canvas.focus()};
-$('debug-toggle').onchange=e=>{debug=e.target.checked;canvas.focus()};
+$('reset-drill').onclick=()=>{release();send({type:'drill',mode:'map'});canvas.focus()};
 $('sound-button').onclick=()=>{sound=!sound;$('sound-button').textContent=`声音：${sound?'开':'关'}`;updateMusic();if(sound)play('uiNormal.wav');canvas.focus()};
-$('bubble-skin').value=localStorage.getItem('qqt-bubble')==='fire'?'fire':'classic';
-$('bubble-skin').onchange=()=>{localStorage.setItem('qqt-bubble',$('bubble-skin').value);if(roomCode)send({type:'appearance',skin:$('bubble-skin').value});canvas.focus()};
 $('fullscreen-button').onclick=()=>{if(document.fullscreenElement)document.exitFullscreen();else document.querySelector('.game-frame').requestFullscreen().catch(()=>toast('当前浏览器不支持全屏'));canvas.focus()};
 $('help-button').onclick=()=>{release();$('help-dialog').showModal()};
 $('close-help').onclick=()=>{$('help-dialog').close();canvas.focus()};
-$('chat-button').onclick=openChat;
 $('chat-form').onsubmit=e=>{e.preventDefault();const message=$('chat-input').value.trim();if(message&&!send({type:'chat',name:nickname(),text:message}))return;$('chat-input').value='';closeChat();};
 $('chat-input').addEventListener('keydown',e=>{e.stopPropagation();if(e.key==='Escape'){e.preventDefault();closeChat()}});
 $('support-button').onclick=()=>{release();closeChat();$('support-dialog').showModal()};
@@ -436,11 +424,6 @@ function render(now){
     }
     text(String(me.power-RULES.power),103,590,10,'#ffe066');
     text(String(me.speed-RULES.speed),156,590,10,'#ffe066');
-    if(state.practice){
-      const elapsed=me.activation?state.time-me.activation.since:0;
-      $('phase-label').textContent=me.onWall?'墙上':me.phaseUntil>state.time?'穿势生效':me.activation?(elapsed>RULES.phaseEnd?'已错过窗口':'已激活'):'等待激活';
-      $('phase-time').textContent=`${elapsed.toFixed(2)} s`;$('meter-cursor').style.left=`${Math.min(100,elapsed*100)}%`;
-    }
   }
   if(roomCode&&performance.now()-lastStateAt>2500)text('等待服务器响应…',307,30,12,'#ffe99d');
   requestAnimationFrame(render);

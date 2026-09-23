@@ -1,7 +1,6 @@
 .app,dialog{cursor:url('/assets/cursor-fight.png') 1 1,auto}
 .app button,dialog button,.app select,dialog label{cursor:url('/assets/cursor-hand.png') 4 4,pointer}
 .app input,dialog input{cursor:text}
-.app input[type=checkbox],dialog input[type=checkbox]{cursor:url('/assets/cursor-hand.png') 4 4,pointer}
 .chat-panel{position:absolute;left:1.5%;bottom:10.3%;width:73%;z-index:6;pointer-events:none;color:#e9faff;font-size:15px;text-shadow:0 1px 2px #082842}
 .chat-log{max-height:130px;overflow:hidden;line-height:1.6;padding:3px 6px}
 .chat-message{overflow-wrap:anywhere;animation:chat-fade 18s forwards}
