@@ -115,8 +115,7 @@ function renderLobby(){
 }
 function resetHome() {
   roomCode=null;state=demo.snapshot();keys=[];rendered.clear();localEffects=[];predicted=null;blocksCache=null;updateMusic();
-  $('home-panel').hidden=false; $('room-panel').hidden=true; $('result-panel').hidden=true;
-  $('practice-tools').hidden=true; $('leave-game').hidden=true; $('footer-status').textContent='抢走对方全部包子并运回自己的包房，即可获胜。'; resetButtons();
+  $('home-panel').hidden=false; $('room-panel').hidden=true; $('result-panel').hidden=true; $('leave-game').hidden=true; $('footer-status').textContent='抢走对方全部包子并运回自己的包房，即可获胜。'; resetButtons();
   $('death-screen').hidden=true;if($('training-dialog').open)$('training-dialog').close();
   closeChat();chatMessages=[];renderChat();
 }
@@ -138,7 +137,7 @@ function handleEvent(e) {
     localEffects.push({...e,received:performance.now()});
     if (e.player === myId && state.practice) toast(e.technique==='3p'?'3P 转向借泡成功':`${e.type==='wall'?'借泡上墙：获得穿势':'穿泡成功'} · ${e.elapsed.toFixed(3)} 秒`);
   }
-  if (e.type === 'timing' && e.player === myId) toast(`${e.elapsed < RULES.phaseStart ? '放泡太早' : '放泡太晚'} · ${e.elapsed.toFixed(3)} 秒，按 R 重试`);
+  if (e.type === 'timing' && e.player === myId) toast(`${e.elapsed < RULES.phaseStart ? '放泡太早' : '放泡太晚'} · ${e.elapsed.toFixed(3)} 秒`);
   if (e.type === 'steal') toast(`${state.players.find(p=>p.id===e.player)?.name || '糖友'} 抢到包子了！`);
   if (e.type === 'capture') { toast(`${e.team===0?'红队':'蓝队'} 带回一个包子！`); play('uiMain.wav'); }
   if (e.type === 'recover' && e.player===myId) toast(e.own?'捡回己方包子，带回自己的包子铺！':'捡到包子，带回自己的包子铺！');
@@ -162,8 +161,7 @@ function roster(target, team) {
 }
 function updateUI() {
   const lobby=state.state==='lobby', finished=state.state==='finished';
-  $('home-panel').hidden=true; $('room-panel').hidden=!lobby; $('result-panel').hidden=!finished;
-  $('practice-tools').hidden=!state.practice; $('leave-game').hidden=lobby;
+  $('home-panel').hidden=true; $('room-panel').hidden=!lobby; $('result-panel').hidden=!finished; $('leave-game').hidden=lobby;
   const self=state.players.find(p=>p.id===myId);
   $('death-screen').hidden=!(self?.status==='dead'&&state.state==='playing');
   if(self?.status==='dead')$('respawn-count').textContent=String(Math.max(0,Math.ceil(self.respawnAt-state.time)));
@@ -174,7 +172,7 @@ function updateUI() {
   if(!state.practice&&$('training-dialog').open)$('training-dialog').close();
   for(const checkbox of document.querySelectorAll('[data-mod]'))checkbox.checked=!!self?.mods?.[checkbox.dataset.mod];
   $('connection-label').textContent=state.practice?'单人练习场':`房间 ${roomCode}`;
-  $('footer-status').textContent=state.practice?'按 R 重置练习场景':`房间 ${roomCode} · ${state.players.length}/8 人 · 带回敌包 红 ${state.captured?.[0]||0}/3 · 蓝 ${state.captured?.[1]||0}/3`;
+  $('footer-status').textContent=`房间 ${roomCode} · ${state.players.length}/8 人 · 带回敌包 红 ${state.captured?.[0]||0}/3 · 蓝 ${state.captured?.[1]||0}/3`;
   const signature=JSON.stringify([state.state,hostId,state.players.map(p=>[p.id,p.name,p.team,p.ready])]);
   if(signature!==lastUI){
     lastUI=signature;
@@ -192,8 +190,7 @@ function updateUI() {
     }
   }
   if(state.practice){
-    $('footer-status').textContent='按 R 重置场景';
-  }
+    }
 }
 function nickname(){return $('nickname').value.trim()||'糖友'}
 $('create-room').onclick=()=>{if(send({type:'create',name:nickname()}))$('create-room').disabled=true};
@@ -208,7 +205,6 @@ $('copy-invite').onclick=async()=>{
   try{await navigator.clipboard.writeText(`${location.origin}/?room=${roomCode}`);toast('邀请链接已复制；局域网朋友请使用房主局域网地址')}
   catch{toast(`房间号：${roomCode}`)}
 };
-$('reset-drill').onclick=()=>{release();send({type:'drill',mode:'map'});canvas.focus()};
 $('sound-button').onclick=()=>{sound=!sound;$('sound-button').textContent=`声音：${sound?'开':'关'}`;updateMusic();if(sound)play('uiNormal.wav');canvas.focus()};
 $('fullscreen-button').onclick=()=>{if(document.fullscreenElement)document.exitFullscreen();else document.querySelector('.game-frame').requestFullscreen().catch(()=>toast('当前浏览器不支持全屏'));canvas.focus()};
 $('help-button').onclick=()=>{release();$('help-dialog').showModal()};
@@ -220,9 +216,7 @@ $('close-support').onclick=()=>{$('support-dialog').close();canvas.focus()};
 document.addEventListener('click',e=>{const button=e.target.closest('button');if(button&&button.id!=='sound-button')play('uiMain.wav',.12)});
 $('close-training').onclick=()=>{$('training-dialog').close();canvas.focus()};
 for(const checkbox of document.querySelectorAll('[data-mod]'))checkbox.onchange=()=>send({type:'training-mod',key:checkbox.dataset.mod,enabled:checkbox.checked});
-$('training-win').onclick=()=>{send({type:'training-win'});$('training-dialog').close();canvas.focus()};
-fetch('/api/info').then(r=>r.json()).then(info=>{$('lan-addresses').textContent=info.addresses.length?`局域网地址：${info.addresses.join(' 或 ')}`:'本机地址：http://localhost:8787'}).catch(()=>{});
-
+$('training-win').onclick=()=>{send({type:'training-win'});$('training-dialog').close();canvas.focus()};
 const keyMap={ArrowUp:'up',KeyW:'up',ArrowDown:'down',KeyS:'down',ArrowLeft:'left',KeyA:'left',ArrowRight:'right',KeyD:'right'};
 function input(bomb=false){if(roomCode&&socket?.readyState===1)socket.send(JSON.stringify({type:'input',seq:++sequence,dir:keys.length?keyMap[keys.at(-1)]:null,bomb}))}
 function release(){keys=[];input()}
@@ -235,9 +229,7 @@ window.addEventListener('keydown',e=>{
   if((e.code==='Digit1'||e.code==='Numpad1')&&!e.repeat){e.preventDefault();socket?.send(JSON.stringify({type:'use-fork'}))}
   if((e.code==='Digit2'||e.code==='Numpad2')&&!e.repeat){e.preventDefault();socket?.send(JSON.stringify({type:'place-banana'}))}
   if((e.code==='Digit3'||e.code==='Numpad3')&&!e.repeat){e.preventDefault();socket?.send(JSON.stringify({type:'place-smile'}))}
-  if(/^Key[TYUIOP]$/.test(e.code)&&!e.repeat){e.preventDefault();socket?.send(JSON.stringify({type:'emote',key:e.code.at(-1).toLowerCase()}))}
-  if(e.code==='KeyR'&&state.practice&&!e.repeat){e.preventDefault();$('reset-drill').click()}
-});
+  if(/^Key[TYUIOP]$/.test(e.code)&&!e.repeat){e.preventDefault();socket?.send(JSON.stringify({type:'emote',key:e.code.at(-1).toLowerCase()}))}});
 window.addEventListener('keyup',e=>{if(keyMap[e.code]){keys=keys.filter(k=>k!==e.code);input()}});
 window.addEventListener('blur',release);document.addEventListener('visibilitychange',()=>{if(document.hidden)release()});
 canvas.addEventListener('pointerdown',()=>canvas.focus());
