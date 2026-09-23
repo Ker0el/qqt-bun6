@@ -22,7 +22,7 @@ await page.keyboard.press('Space');await page.waitForTimeout(310);await page.key
 assert.equal(latest.players[0].phaseCount,1);assert(latest.players[0].y<6);
 await page.getByRole('checkbox',{name:'显示格线和判定位置'}).check();
 await page.screenshot({path:path.join(root,'practice-preview.png'),fullPage:true});
-await page.getByRole('button',{name:'声音：关'}).click();assert.equal(await page.getByRole('button',{name:'声音：开'}).count(),1);
+await page.getByRole('button',{name:'声音：开'}).click();assert.equal(await page.getByRole('button',{name:'声音：关'}).count(),1);
 await page.getByRole('button',{name:'玩法说明'}).click();assert(await page.locator('#help-dialog').isVisible());
 await page.getByRole('button',{name:'关闭说明'}).click();
 await page.getByRole('button',{name:'借泡上墙',exact:true}).click();await page.locator('#game').focus();await page.keyboard.down('ArrowUp');

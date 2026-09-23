@@ -14,7 +14,7 @@ $('loading').hidden = true; $('home-panel').hidden = false;
 const demo = new Match(map);
 let state = demo.snapshot(), socket, myId = null, roomCode = null, hostId = null;
 let sequence = 0, keys = [], seenEvent = 0, localEffects = [], debug = false;
-let sound = false, bgm, toastTimer, lastStateAt = performance.now(), previousFrame = performance.now();
+let sound = true, bgm, toastTimer, lastStateAt = performance.now(), previousFrame = performance.now();
 let rendered = new Map(), countdownSound = false, lastUI = '', reconnectTimer;
 let directory={online:0,rooms:[]};
 let chatMessages=[],lastExplosionSound=-1000;
