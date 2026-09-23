@@ -24,6 +24,7 @@
           <div class="window-content">
             <div class="lobby-title"><strong>抢包山 6</strong><span id="lobby-count">正在读取大厅…</span></div>
             <label class="field">你的昵称<input id="nickname" value="糖友" maxlength="12" autocomplete="off" spellcheck="false"></label>
+            <label class="field">地图<select id="map-select"><option value="bun06_8">抢包山 6 · 红蓝对战</option><option value="water11_8">水面 11 · 海盗水手（1–5人合作）</option></select></label>
             <button class="gold-button" id="create-room">创建联机房间 <span>→</span></button>
             <div class="public-rooms" id="public-rooms" aria-label="公开房间列表"><p class="empty-lobby">暂时没有房间，来创建第一间吧。</p></div>
             <div class="join-row"><input id="room-code" placeholder="输入 6 位房间号" inputmode="numeric" maxlength="6" aria-label="房间号"><button class="blue-button" id="join-room">加入</button></div>
@@ -78,6 +79,7 @@
       <label><input type="checkbox" data-mod="invincible">无敌</label>
       <label><input type="checkbox" data-mod="noclip">穿墙</label>
       <label><input type="checkbox" data-mod="reveal">显示墙内道具</label>
+      <label><input type="checkbox" data-mod="instant">放泡秒炸</label>
     </div>
     <button id="training-win" class="gold-button">秒赢 · 来回搬包</button>
   </div></dialog>

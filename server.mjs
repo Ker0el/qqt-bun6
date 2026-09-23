@@ -8,9 +8,11 @@ import { randomBytes } from 'node:crypto';
 import os from 'node:os';
 import { WebSocketServer, WebSocket } from 'ws';
 import { Match, RULES } from './public/engine.mjs';
+import { WaterMatch } from './public/water11.mjs';
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), 'public');
 const map = JSON.parse(await readFile(path.join(root, 'assets/map.json'), 'utf8'));
+const waterMap=JSON.parse(await readFile(path.join(root,'assets/water11.json'),'utf8'));
 const rooms = new Map();
 const lobbyChat=[];
 // 部署侧配置：.runtime/config.json 优先于环境变量，便于在无法注入 env 的托管环境（如宝塔）下设置来源校验
@@ -44,10 +46,10 @@ const send = (ws, data) => { if (ws.readyState === WebSocket.OPEN) ws.send(JSON.
 function lobbyPacket(){
   return{type:'lobby',online:[...wss.clients].filter(c=>c.readyState===WebSocket.OPEN).length,
     rooms:[...rooms.values()].filter(r=>!r.match.practice).map(r=>({
-      code:r.code,host:r.match.players.find(p=>p.id===r.host)?.name||'糖友',map:map.name,
-      count:r.match.players.length,max:RULES.maxPlayers,red:r.match.players.filter(p=>p.team===0).length,
+      code:r.code,host:r.match.players.find(p=>p.id===r.host)?.name||'糖友',map:r.match.map.name,
+      count:r.match.players.length,max:r.match.map.mode==='water11'?5:RULES.maxPlayers,red:r.match.players.filter(p=>p.team===0).length,
       blue:r.match.players.filter(p=>p.team===1).length,status:r.match.state,
-      joinable:r.match.state==='lobby'&&r.match.players.length<RULES.maxPlayers
+      joinable:r.match.state==='lobby'&&r.match.players.length<(r.match.map.mode==='water11'?5:RULES.maxPlayers)
     }))};
 }
 let lastDirectory='';
@@ -59,6 +61,8 @@ function publish(room, forceBlocks = false) {
   const packet = { type: 'state', room: room.code, host: room.host, ...room.match.snapshot() };
   // 中途加入的客户端本地没有地图，必须补发一次完整 blocks
   if (forceBlocks && !packet.blocks) packet.blocks = room.match.blocks;
+  // 困泡时长整局只在下发一次，中途加入的人也要补上
+  if (forceBlocks && packet.trapDuration === undefined) packet.trapDuration = room.match.trapDuration;
   for (const ws of room.clients.values()) send(ws, packet);
 }
 function leave(ws) {
@@ -98,7 +102,8 @@ wss.on('connection', ws => {
         if (msg.type === 'create') {
           if (rooms.size >= 50) { send(ws, { type: 'error', message: '房间已满，请稍后再试' }); return; }
           let code; do { code = String(100000 + randomBytes(4).readUInt32LE() % 900000); } while (rooms.has(code));
-          room = { code, match: new Match(map, msg.practice === true,randomBytes(4).readUInt32LE()), clients: new Map(), host: ws.pid };
+          const water=msg.mapId==='water11_8';
+          room = { code, match: new (water?WaterMatch:Match)(water?waterMap:map, msg.practice === true,randomBytes(4).readUInt32LE()), clients: new Map(), host: ws.pid };
         } else {
           room = rooms.get(String(msg.code || '').replace(/\s/g, ''));
           if (!room) { send(ws, { type: 'error', message: '没有找到这个房间，请核对房间号' }); return; }
@@ -106,11 +111,12 @@ wss.on('connection', ws => {
           if (room.match.state !== 'lobby') { send(ws, { type: 'error', message: '该房间正在对局，请等房主返回房间' }); return; }
           if (room.clients.size >= RULES.maxPlayers) { send(ws, { type: 'error', message: '房间已有 8 人' }); return; }
         }
+        if(room.match.map.mode==='water11'&&room.match.players.length>=5){send(ws,{type:'error',message:'水面11最多5人合作'});return;}
         leave(ws);
         rooms.set(room.code, room); ws.room = room; room.clients.set(ws.pid, ws);
         const red = room.match.players.filter(p => p.team === 0).length;
         const blue = room.match.players.filter(p => p.team === 1).length;
-        const joinedPlayer=room.match.addPlayer(ws.pid, String(msg.name || '糖友').trim().slice(0, 12) || '糖友', red <= blue ? 0 : 1);
+        const joinedPlayer=room.match.addPlayer(ws.pid, String(msg.name || '糖友').trim().slice(0, 12) || '糖友', room.match.map.mode==='water11'?0:red <= blue ? 0 : 1);
         joinedPlayer.skin=msg.skin==='fire'?'fire':'classic';
         send(ws, { type: 'joined', room: room.code, id: ws.pid, practice: room.match.practice });
         send(ws,{type:'chat-history',scope:'room',messages:room.chat||[]});
@@ -138,13 +144,14 @@ wss.on('connection', ws => {
       if (msg.type === 'input') { room.match.setInput(ws.pid, msg); return; }
       if (msg.type === 'ready' && room.match.state === 'lobby') p.ready = !p.ready;
       if (msg.type === 'team' && room.match.state === 'lobby') {
+        if(room.match.map.mode==='water11')return;
         const target = 1 - p.team;
         if (room.match.players.filter(p => p.team === target).length >= 4) { send(ws, { type: 'error', message: '这支队伍已满' }); return; }
         p.team = target; p.ready = false; room.match.spawn(p);
       }
       if (msg.type === 'start' && room.host === ws.pid && room.match.state === 'lobby') {
         const red = room.match.players.filter(p => p.team === 0).length, blue = room.match.players.length - red;
-        if (!red || red !== blue) { send(ws, { type: 'error', message: '需要红蓝双方人数相等（至少 1 对 1）' }); return; }
+        if (room.match.map.mode!=='water11'&&(!red || red !== blue)) { send(ws, { type: 'error', message: '需要红蓝双方人数相等（至少 1 对 1）' }); return; }
         if (room.match.players.some(p => p.id !== room.host && !p.ready)) { send(ws, { type: 'error', message: '请等待其他玩家准备' }); return; }
         room.match.start();
       }
@@ -177,5 +184,4 @@ server.listen(port, '0.0.0.0', async () => {
 });
 server.on('error', err => { console.error(err.message); clearInterval(timer); process.exit(1); });
 process.on('SIGTERM', () => { clearInterval(timer);clearInterval(heartbeat);for(const ws of wss.clients)ws.close();wss.close();server.close(); });
-
 

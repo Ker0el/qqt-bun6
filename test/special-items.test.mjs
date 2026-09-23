@@ -54,6 +54,11 @@ test('sliding ignores steering and action inputs and keeps animation moving',()=
  assert.equal(m.placeBomb(p),false);p.bananas=1;assert.equal(m.placeBanana(p.id),false);
  const y=p.y;m.move(p,1/120);assert(p.x>7.5);assert.equal(p.y,y);assert.equal(p.moving,true);
 });
+test('the banana slide outruns normal running speed',()=>{
+ const[m,p]=setup();p.dir='right';m.collectItem(p,{kind:'banana-trap'});
+ assert(RULES.slideSpeed>RULES.maxSpeed,'the slip must outrun the fastest run');
+ m.move(p,1/120);assert(Math.abs(p.x-7.5-RULES.slideSpeed/120)<1e-6);
+});
 test('slide reaches wall contact before restoring held steering',()=>{
  const[m,p]=setup();p.x=9.5;p.y=8.5;p.dir='right';m.blocks[8*15+10]=8005;
  m.collectItem(p,{kind:'banana-trap'});m.setInput(p.id,{seq:1,dir:'up'});m.move(p,1/120);
@@ -65,6 +70,18 @@ test('smile slows movement temporarily without reducing collected speed',()=>{
  m.move(p,.1);assert(Math.abs(p.x-7.5-speed*.03)<1e-6);assert.equal(p.speed,speed);
  m.time+=5.01;const x=p.x;m.move(p,.1);assert(Math.abs(p.x-x-speed*.1)<1e-6);
  m.spawn(p);assert.equal(p.slowUntil,0);assert.equal(p.slideDir,null);
+});
+test('stepping on a banana clears the smile slow',()=>{
+ const[m,p]=setup();p.input.dir='right';m.blocks[8*15+10]=8005;
+ m.collectItem(p,{kind:'smile-trap'});assert.equal(p.slowUntil,m.time+5);
+ const start=p.x;m.move(p,.1);assert(Math.abs(p.x-start-p.speed*.03)<1e-6,'the smile must slow movement first');
+ m.collectItem(p,{kind:'banana-trap'});
+ assert.equal(p.slowUntil,0,'the slip must clear the smile slow');
+ assert.equal(p.slideDir,'right','the banana still locks the slide direction');
+ for(let i=0;i<120;i++)m.move(p,1/120);
+ assert.equal(p.slideDir,null,'the slide ends at the obstacle');
+ p.input.dir='left';
+ const x=p.x;m.move(p,.1);assert(Math.abs(x-p.x-p.speed*.1)<1e-6,'speed is back to normal');
 });
 test('smile is stored until placed and only the player stepping on it is slowed',()=>{
  const[m,p]=setup();m.collectItem(p,{kind:'smile'});assert.equal(p.smiles,1);assert.equal(p.slowUntil,0);

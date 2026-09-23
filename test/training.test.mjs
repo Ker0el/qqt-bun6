@@ -25,6 +25,34 @@ test('fast movement, invincibility and noclip work only while enabled',()=>{
   m.setTrainingMod(p.id,'invincible',true);m.trapPlayer(p,'q');m.kill(p,'q');assert.equal(p.status,'alive');
   m.setTrainingMod(p.id,'invincible',false);m.trapPlayer(p,'q');assert.equal(p.status,'trapped');
 });
+test('the instant mod shortens the fuse only in one-player training',()=>{
+  const[m,p]=fixture();m.blocks.fill(0);p.x=7.5;p.y=8.5;
+  assert(RULES.fuseInstant<RULES.fuse);
+  assert(m.setTrainingMod(p.id,'instant',true));
+  m.time+=.2;assert(m.placeBomb(p));
+  let b=m.bombs.at(-1);assert(Math.abs(b.explodeAt-b.born-RULES.fuseInstant)<1e-9);
+  m.bombs=[];assert(m.setTrainingMod(p.id,'instant',false));m.time+=.2;assert(m.placeBomb(p));
+  b=m.bombs.at(-1);assert(Math.abs(b.explodeAt-b.born-RULES.fuse)<1e-9);
+  const[n,q]=fixture(false);assert.equal(n.setTrainingMod(q.id,'instant',true),false);
+});
+test('an instant bubble really does go off within a dozen ticks',()=>{
+  const[m,p]=fixture();m.blocks.fill(0);p.x=7.5;p.y=8.5;p.shieldUntil=1e9;
+  m.setTrainingMod(p.id,'instant',true);assert(m.placeBomb(p));
+  const target=m.bombs.at(-1).id;let ticks=0;
+  while(m.bombs.some(b=>b.id===target)&&ticks<60){m.tick();ticks++;}
+  assert(!m.bombs.some(b=>b.id===target),'the bubble must not outlive its instant fuse');
+  assert(ticks<=15,`took ${ticks} ticks`);
+});
+test('reveal keeps wall-dropped items from being blown up again',()=>{
+  const[m,p]=fixture();m.blocks.fill(0);p.x=7.5;p.y=8.5;p.shieldUntil=1e9;
+  const blast=()=>{const b={id:++m.serial,x:8,y:8,owner:p.id,power:2,born:m.time,explodeAt:m.time};m.bombs.push(b);m.explode(b)};
+  const drop=()=>m.items.push({id:++m.serial,x:9,y:8,kind:'power',availableAt:m.time});
+  assert(m.setTrainingMod(p.id,'reveal',true));
+  drop();blast();assert(m.items.some(i=>i.x===9&&i.y===8),'reveal must leave the dropped item alone');
+  blast();blast();assert(m.items.some(i=>i.x===9&&i.y===8),'and must keep leaving it alone');
+  assert(m.setTrainingMod(p.id,'reveal',false));
+  blast();assert(!m.items.some(i=>i.x===9&&i.y===8),'without the mod the blast still clears items');
+});
 test('instant-win visibly performs three pickup/deposit trips before concluding',()=>{
   const[m,p]=fixture();assert(m.beginTrainingWin(p.id));tick(m,150);
   assert.equal(p.captures,3);assert.equal(m.winner,0);assert.equal(m.state,'finished');

@@ -1,9 +1,12 @@
 import { Match, RULES, DIR, hydratePlayers } from './engine.mjs';
+import {hiddenInWater,waterElementPosition} from './water-visuals.mjs';
 
 const $ = id => document.getElementById(id);
 const canvas = $('game'), ctx = canvas.getContext('2d');
 const manifest = await fetch('/assets/manifest.json').then(r => r.json());
-const map = await fetch('/assets/map.json').then(r => r.json());
+const bunMap = await fetch('/assets/map.json').then(r => r.json());
+const waterMap = await fetch('/assets/water11.json').then(r => r.json());
+let map=bunMap;
 const images = new Map(); let loaded = 0;
 await Promise.all(Object.entries(manifest).map(([key, meta]) => new Promise((resolve, reject) => {
   const image = new Image(); image.onload = () => { images.set(key, image); loaded++; $('load-progress').textContent = `正在加载素材中... ${loaded} / ${Object.keys(manifest).length}`; resolve(); };
@@ -83,6 +86,8 @@ function connect() {
       localStorage.setItem('qqt-name', $('nickname').value.trim()); updateMusic(); resetButtons();
     }
     if (msg.type === 'state') {
+      const nextMap=msg.mapId==='water11_8'?waterMap:bunMap;
+      if(map!==nextMap){map=nextMap;blocksCache=null;predicted=null;rendered.clear();}
       if (msg.blocks) blocksCache = msg.blocks;
       hydratePlayers(msg.players);
       state = msg; hostId = msg.host; lastStateAt = performance.now();
@@ -114,6 +119,7 @@ function renderLobby(){
   }
 }
 function resetHome() {
+  map=bunMap;
   roomCode=null;state=demo.snapshot();keys=[];rendered.clear();localEffects=[];predicted=null;blocksCache=null;updateMusic();
   $('home-panel').hidden=false; $('room-panel').hidden=true; $('result-panel').hidden=true; $('leave-game').hidden=true; $('footer-status').textContent='抢走对方全部包子并运回自己的包房，即可获胜。'; resetButtons();
   $('death-screen').hidden=true;if($('training-dialog').open)$('training-dialog').close();
@@ -127,17 +133,16 @@ function renderChat(){
 function openChat(){release();$('chat-form').hidden=false;$('chat-panel').classList.add('typing');$('chat-scope').textContent=roomCode?'房间':'大厅';$('chat-input').focus();}
 function closeChat(){$('chat-form').hidden=true;$('chat-panel').classList.remove('typing');canvas.focus();}
 function handleEvent(e) {
+  if(e.type==='boss-loot'&&e.player===myId)toast('获得'+({rose:'玫瑰花',chest:'宝箱',luckybag:'福袋',kubi:'酷比'}[e.kind]));
   if (e.type === 'start') { play('ReadyGo.wav',.5); countdownSound=true; }
   if (e.type === 'bomb'&&e.player===myId) play('place.wav',.28);
   if (e.type === 'explode'&&performance.now()-lastExplosionSound>60){play('bomb.wav',.25);lastExplosionSound=performance.now();}
   if(e.type==='death')play('trapped-pop.wav',.3);
   if (e.type === 'break') localEffects.push({...e,received:performance.now()});
-  if(e.type==='death'||e.type==='training-warp')localEffects.push({...e,received:performance.now()});
-  if (e.type === 'phase' || e.type === 'wall') {
-    localEffects.push({...e,received:performance.now()});
-    if (e.player === myId && state.practice) toast(e.technique==='3p'?'3P 转向借泡成功':`${e.type==='wall'?'借泡上墙：获得穿势':'穿泡成功'} · ${e.elapsed.toFixed(3)} 秒`);
-  }
-  if (e.type === 'timing' && e.player === myId) toast(`${e.elapsed < RULES.phaseStart ? '放泡太早' : '放泡太晚'} · ${e.elapsed.toFixed(3)} 秒`);
+  if(e.type==='death'||e.type==='training-warp'||e.type==='cave-lit')localEffects.push({...e,received:performance.now()});
+  // 穿泡/借泡只留地面光环，不再弹「穿泡成功 · x 秒」这类文字提示。
+  if (e.type === 'phase' || e.type === 'wall') localEffects.push({...e,received:performance.now()});
+  // 「放泡太早/太晚」的提示同理已去掉。
   if (e.type === 'steal') toast(`${state.players.find(p=>p.id===e.player)?.name || '糖友'} 抢到包子了！`);
   if (e.type === 'capture') { toast(`${e.team===0?'红队':'蓝队'} 带回一个包子！`); play('uiMain.wav'); }
   if (e.type === 'recover' && e.player===myId) toast(e.own?'捡回己方包子，带回自己的包子铺！':'捡到包子，带回自己的包子铺！');
@@ -148,7 +153,7 @@ function handleEvent(e) {
 function roster(target, team) {
   const list=$(target); list.replaceChildren();
   const players=state.players.filter(p=>p.team===team);
-  for(let i=0;i<4;i++) {
+  for(let i=0;i<(state.mode==='water11'&&team===0?5:4);i++) {
     const row=document.createElement('div');row.className='roster-row';const p=players[i];
     if(p){
       const image=document.createElement('img');image.src=`/assets/prince-${team===0?'red':'blue'}-stand-3.png`;image.alt='';
@@ -163,8 +168,14 @@ function updateUI() {
   const lobby=state.state==='lobby', finished=state.state==='finished';
   $('home-panel').hidden=true; $('room-panel').hidden=!lobby; $('result-panel').hidden=!finished; $('leave-game').hidden=lobby;
   const self=state.players.find(p=>p.id===myId);
+  const water=state.mode==='water11';
+  $('switch-team').hidden=water;
+  $('blue-roster').parentElement.hidden=water;
+  document.querySelector('.red-heading').textContent=water?'合作队伍':'红队';
+  document.querySelector('#room-panel .window-title span').textContent=water?'水面 11 · 等待开局':'抢包山 6 · 等待开局';
   $('death-screen').hidden=!(self?.status==='dead'&&state.state==='playing');
-  if(self?.status==='dead')$('respawn-count').textContent=String(Math.max(0,Math.ceil(self.respawnAt-state.time)));
+  if(self?.status==='dead')$('respawn-count').textContent=water?'观战':String(Math.max(0,Math.ceil(self.respawnAt-state.time)));
+  $('death-screen').querySelector('small').textContent=water?'等待队友击败水手':'等待复活';
   let cry=$('death-cry-overlay');
   if(!cry){cry=document.createElement('img');cry.id='death-cry-overlay';cry.src='/assets/death-cry.gif';cry.alt='';$('death-screen').append(cry)}
   cry.hidden=!(self?.status==='dead'&&state.time-self.respawnAt+RULES.respawn<2);
@@ -172,7 +183,9 @@ function updateUI() {
   if(!state.practice&&$('training-dialog').open)$('training-dialog').close();
   for(const checkbox of document.querySelectorAll('[data-mod]'))checkbox.checked=!!self?.mods?.[checkbox.dataset.mod];
   $('connection-label').textContent=state.practice?'单人练习场':`房间 ${roomCode}`;
-  $('footer-status').textContent=`房间 ${roomCode} · ${state.players.length}/8 人 · 带回敌包 红 ${state.captured?.[0]||0}/3 · 蓝 ${state.captured?.[1]||0}/3`;
+  // 水面11 不在这条状态栏里报血量：血条按原版挂在 boss 头上，这一行整行留空。
+  // 用清空而不是 hidden —— footer 是 space-between，藏掉左侧会把它右对齐的落款挤到左边。
+  $('footer-status').textContent=water?'':`房间 ${roomCode} · ${state.players.length}/8 人 · 带回敌包 红 ${state.captured?.[0]||0}/3 · 蓝 ${state.captured?.[1]||0}/3`;
   const signature=JSON.stringify([state.state,hostId,state.players.map(p=>[p.id,p.name,p.team,p.ready])]);
   if(signature!==lastUI){
     lastUI=signature;
@@ -181,9 +194,11 @@ function updateUI() {
       const me=state.players.find(p=>p.id===myId);
       $('ready-button').textContent=myId===hostId?'开始游戏':me?.ready?'取消准备':'准 备';
       $('room-hint').textContent=state.players.length<2?'邀请一位糖友加入，开始红蓝对战':'双方人数相等，所有糖友准备后即可开局';
+      if(water)$('room-hint').textContent='水面11 · 1–5人合作挑战海盗水手，全员准备后开局';
     }
     if(finished){
       $('result-title').textContent=state.winner===null?'平 局':state.winner===0?'红队获胜！':'蓝队获胜！';
+      if(water)$('result-title').textContent=state.winner===0?'挑战成功！':'挑战失败';
       $('result-reason').textContent=state.reason;$('result-stats').replaceChildren();
       for(const p of state.players){const row=document.createElement('div');row.className='result-stat';const name=document.createElement('span');name.textContent=p.name;const result=document.createElement('span');result.textContent=`抢回 ${p.captures} · 击破 ${p.kills}`;row.append(name,result);$('result-stats').append(row)}
       $('return-room').textContent=state.practice?'再练一次':myId===hostId?'返回房间':'等待房主返回房间';$('return-room').disabled=myId!==hostId;
@@ -193,10 +208,10 @@ function updateUI() {
     }
 }
 function nickname(){return $('nickname').value.trim()||'糖友'}
-$('create-room').onclick=()=>{if(send({type:'create',name:nickname()}))$('create-room').disabled=true};
+$('create-room').onclick=()=>{if(send({type:'create',mapId:$('map-select').value,name:nickname()}))$('create-room').disabled=true};
 $('join-room').onclick=()=>{const code=$('room-code').value.trim();if(!/^\d{6}$/.test(code)){toast('请输入 6 位房间号');return}if(send({type:'join',code,name:nickname()}))$('join-room').disabled=true};
 $('room-code').addEventListener('keydown',e=>{if(e.key==='Enter')$('join-room').click()});
-$('practice').onclick=()=>{if(send({type:'create',practice:true,name:nickname()})){$('practice').disabled=true;canvas.focus()}};
+$('practice').onclick=()=>{if(send({type:'create',practice:true,mapId:$('map-select').value,name:nickname()})){$('practice').disabled=true;canvas.focus()}};
 $('ready-button').onclick=()=>{send({type:myId===hostId?'start':'ready'});canvas.focus()};
 $('switch-team').onclick=()=>send({type:'team'});
 for(const id of ['leave-lobby','leave-game'])$(id).onclick=()=>{release();play('uiLeave.wav',.25);send({type:'leave'})};
@@ -216,7 +231,9 @@ $('close-support').onclick=()=>{$('support-dialog').close();canvas.focus()};
 document.addEventListener('click',e=>{const button=e.target.closest('button');if(button&&button.id!=='sound-button')play('uiMain.wav',.12)});
 $('close-training').onclick=()=>{$('training-dialog').close();canvas.focus()};
 for(const checkbox of document.querySelectorAll('[data-mod]'))checkbox.onchange=()=>send({type:'training-mod',key:checkbox.dataset.mod,enabled:checkbox.checked});
-$('training-win').onclick=()=>{send({type:'training-win'});$('training-dialog').close();canvas.focus()};
+$('training-win').onclick=()=>{send({type:'training-win'});$('training-dialog').close();canvas.focus()};
+
+
 const keyMap={ArrowUp:'up',KeyW:'up',ArrowDown:'down',KeyS:'down',ArrowLeft:'left',KeyA:'left',ArrowRight:'right',KeyD:'right'};
 function input(bomb=false){if(roomCode&&socket?.readyState===1)socket.send(JSON.stringify({type:'input',seq:++sequence,dir:keys.length?keyMap[keys.at(-1)]:null,bomb}))}
 function release(){keys=[];input()}
@@ -229,20 +246,25 @@ window.addEventListener('keydown',e=>{
   if((e.code==='Digit1'||e.code==='Numpad1')&&!e.repeat){e.preventDefault();socket?.send(JSON.stringify({type:'use-fork'}))}
   if((e.code==='Digit2'||e.code==='Numpad2')&&!e.repeat){e.preventDefault();socket?.send(JSON.stringify({type:'place-banana'}))}
   if((e.code==='Digit3'||e.code==='Numpad3')&&!e.repeat){e.preventDefault();socket?.send(JSON.stringify({type:'place-smile'}))}
-  if(/^Key[TYUIOP]$/.test(e.code)&&!e.repeat){e.preventDefault();socket?.send(JSON.stringify({type:'emote',key:e.code.at(-1).toLowerCase()}))}});
+  if(/^Key[TYUIOP]$/.test(e.code)&&!e.repeat){e.preventDefault();socket?.send(JSON.stringify({type:'emote',key:e.code.at(-1).toLowerCase()}))}
+});
 window.addEventListener('keyup',e=>{if(keyMap[e.code]){keys=keys.filter(k=>k!==e.code);input()}});
 window.addEventListener('blur',release);document.addEventListener('visibilitychange',()=>{if(document.hidden)release()});
 canvas.addEventListener('pointerdown',()=>canvas.focus());
 
 const OX=8, OY=22, T=40;
+// 困泡时长由服务端决定（PVE 水面11 是 RULES.trapPve），快照里只下发一次。
+// 破泡动画的播放进度要靠它反推：写成函数是为了每次读当前 state，而不是建场时的那份。
+const trapDuration=()=>state.trapDuration??RULES.trap;
 function standingLift(p){if(p.renderLayer!=='wall'||!p.renderWallCell)return 0;const[x,y]=p.renderWallCell.split(',').map(Number);return Math.max(0,(manifest[`tile${blocks()[y*15+x]-8000}`]?.h||40)-40)}
 function playerSprite(p, x, y, time, alpha=1){
+  if(hiddenInWater(map,p))return;
   const team=p.team===0?'red':'blue',action=p.moving?'walk':'stand',dir=DIR[p.dir]?.[2]??3;
   const lift=standingLift(p);
   ctx.save();
   ctx.fillStyle='#2a46144d';ctx.beginPath();ctx.ellipse(x,y+17,13,5,0,0,Math.PI*2);ctx.fill();
   if(p.status==='trapped'){
-    const age=Math.max(0,state.time-(p.trappedUntil-RULES.trap)),key=age<.4?'trap-bubble':'trap-shell',m=manifest[key];
+    const age=Math.max(0,state.time-(p.trappedUntil-trapDuration())),key=age<.4?'trap-bubble':'trap-shell',m=manifest[key];
     sprite(key,x-m.w/2,y+19-m.h-lift,age<.4?age*12:time/100,1,.85);
     sprite(`prince-${team}-trigger`,x-50,y-64-lift,time/100,1,alpha);
     sprite(key,x-m.w/2,y+19-m.h-lift,age<.4?age*12:time/100,1,.28);
@@ -259,7 +281,9 @@ function render(now){
   const dt=Math.min(.05,(now-previousFrame)/1000);previousFrame=now;
   ctx.clearRect(0,0,800,600);ctx.fillStyle='#2594cb';ctx.fillRect(0,0,800,600);
   ctx.save();ctx.beginPath();ctx.rect(8,0,600,542);ctx.clip();
-  for(let y=0;y<13;y++)for(let x=0;x<15;x++)sprite('tile11',OX+x*T,OY+y*T);
+  for(let y=0;y<13;y++)for(let x=0;x<15;x++)sprite(map.mode==='water11'?`water-${map.ground[y*15+x]}`:'tile11',OX+x*T,OY+y*T);
+  if(map.mode!=='water11')for(let y=0;y<13;y++)for(let x=0;x<15;x++){const tile=map.ground[y*15+x];if(tile>0&&tile!==8011)sprite(`tile${tile-8000}`,OX+x*T,OY+y*T)}
+  for(const item of state.items||[]){if(item.availableAt>state.time)continue;const key={capacity:'item1',power:'item2',speed:'item3',fork:'item24',banana:'item23','banana-trap':'item42',smile:'item25','smile-trap':'item25',rose:'item301',chest:'item213',luckybag:'item202',kubi:'item98'}[item.kind];const m=manifest[key];if(m)sprite(key,OX+(item.x+.5)*T-m.w/2,OY+(item.y+.5)*T-m.h/2,now/130)}
   for(let y=0;y<13;y++)for(let x=0;x<15;x++){const tile=map.ground[y*15+x];if(tile>0&&tile!==8011)sprite(`tile${tile-8000}`,OX+x*T,OY+y*T)}
   for(const item of state.items||[]){if(item.availableAt>state.time)continue;const key={capacity:'item1',power:'item2',speed:'item3',fork:'item24',banana:'item23','banana-trap':'item42',smile:'item25','smile-trap':'item25'}[item.kind];const m=manifest[key];if(m)sprite(key,OX+(item.x+.5)*T-m.w/2,OY+(item.y+.5)*T-m.h/2,now/130)}
   for(const b of state.buns||[])bun(OX+(b.x+.5)*T,OY+(b.y+.5)*T,1.5,b.owner);
@@ -271,18 +295,38 @@ function render(now){
     const m=manifest[key];sprite(key,x-m.w/2,y-m.h/2,Math.min(m.frames-1,(state.time-f.born)/RULES.flame*m.frames));
   }
   const drawables=[];
-  for(let y=0;y<13;y++)for(let x=0;x<15;x++){
+  if(map.mode==='water11'){
+    for(const o of map.objects)if(!o.breakable||blocks()[o.y*15+o.x])drawables.push({...o,z:o.y+o.h-.2,type:'water'});
+    if(state.boss)drawables.push({z:state.boss.y,type:'boss',p:state.boss});
+  }
+  if(map.mode!=='water11')for(let y=0;y<13;y++)for(let x=0;x<15;x++){
     const tile=blocks()[y*15+x];if(tile>0)drawables.push({z:y+.8,type:'tile',tile:tile-8000,x,y});
     const building=map.structures[y*15+x];if(building>0)drawables.push({z:y+2.7,type:'building',tile:building-8000,x,y});
   }
   for(const b of state.bombs||[]){
+    // 洞口里的糖泡跟人和水手一样藏起来；爆炸不藏，火焰照常画。
+    if(hiddenInWater(map,{x:b.x+.5,y:b.y+.5}))continue;
     const occupants=(state.players||[]).filter(p=>Math.floor(p.x)===b.x&&Math.floor(p.y)===b.y);
     drawables.push({z:Math.min(b.y+.35,...occupants.map(p=>p.y-.01)),type:'bomb',b});
   }
   for(const p of state.players||[])if(p.status!=='dead'&&p.inHouse===null&&p.renderLayer!=='wall')drawables.push({z:p.y,type:'player',p});
   drawables.sort((a,b)=>a.z-b.z);
   for(const d of drawables){
-    if(d.type==='tile'||d.type==='building'){
+    if(d.type==='water'){
+      const anchor=waterElementPosition(d,T);sprite(`water-${d.id}`,OX+anchor.x,OY+anchor.y,now/100);
+      // 玩家踏进洞口时铺上原版 trigger 的 5 帧点亮动画。和洞口同一层画，站在洞口
+      // 前面的角色才不会被它盖住。
+      if(d.id===5010){
+        const lit=localEffects.find(e=>e.type==='cave-lit'&&e.x===d.x&&e.y===d.y),m=manifest['water-trigger-5010'];
+        if(lit&&m){const age=(now-lit.received)/1000;
+          sprite('water-trigger-5010',OX+anchor.x,OY+anchor.y,Math.min(m.frames-1,age*12),1,Math.max(0,1-age/.6));}
+      }
+    }else if(d.type==='boss'){
+      if(hiddenInWater(map,d.p)||(d.p.hp<=0&&state.time>d.p.phaseUntil))continue;
+      const b=d.p,action=b.hp<=0?'die':b.phase==='birth'?'birth':b.moving?`walk-${DIR[b.dir][2]}`:`stand-${DIR[b.dir][2]}`,key=`sailor-${action}`,m=manifest[key];
+      if(m){const frame=b.hp<=0?Math.min(m.frames-1,(state.time-b.phaseUntil+.9)*10):b.phase==='birth'?Math.min(m.frames-1,state.time*10):now/100;
+        sprite(key,OX+b.x*T-m.w/2,OY+b.y*T-64,frame,1,state.time<b.hurtUntil&&Math.floor(now/90)%2?.5:1);}
+    }else if(d.type==='tile'||d.type==='building'){
       const m=manifest[`tile${d.tile}`];if(m)sprite(`tile${d.tile}`,OX+d.x*T,OY+(d.y+(d.type==='building'?3:1))*T-m.h);
     }else if(d.type==='bomb'){
       const b=d.b,key=b.skin==='fire'?'bomb-fire':'bomb1',m=manifest[key];
@@ -318,14 +362,15 @@ function render(now){
   localEffects=localEffects.filter(e=>now-e.received<600);
   for(const e of localEffects){
     const age=(now-e.received)/1000;
-    if(e.type==='break'){const m=manifest[`break${e.tile}`];if(m)sprite(`break${e.tile}`,OX+e.x*T,OY+(e.y+1)*T-m.h,Math.min(m.frames-1,age*16),1,Math.max(0,1-age/.6))}
+    if(e.type==='break'){const o=map.mode==='water11'?map.objects.find(o=>o.x===e.x&&o.y===e.y):null,key=o?`water-break-${o.id}`:`break${e.tile}`,m=manifest[key];if(m)sprite(key,OX+e.x*T-(o?.offset[0]||0),o?OY+e.y*T-o.offset[1]:OY+(e.y+1)*T-m.h,Math.min(m.frames-1,age*16),1,Math.max(0,1-age/.6))}
     else if(e.type==='death'){const m=manifest['trap-pop'];sprite('trap-pop',OX+e.x*T-m.w/2,OY+e.y*T+19-m.h,Math.min(1,age*10),1,Math.max(0,1-age/.3))}
     else if(e.type==='training-warp'){ctx.strokeStyle=`rgba(255,238,125,${Math.max(0,1-age/.3)})`;ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(OX+e.fromX*T,OY+e.fromY*T);ctx.lineTo(OX+e.x*T,OY+e.y*T);ctx.stroke()}
+    else if(e.type==='cave-lit'){/* 画在洞口自己那一层，见上面 water drawable */}
     else{ctx.strokeStyle=`rgba(205,255,255,${Math.max(0,1-age/.6)})`;ctx.lineWidth=2;ctx.beginPath();ctx.ellipse(OX+e.x*T,OY+e.y*T,15+age*35,7+age*18,0,0,Math.PI*2);ctx.stroke()}
   }
   // Elevated actors are a separate foreground pass; scenery cannot cover them.
   if(state.practice)for(const item of state.hiddenItems||[]){
-    const key={capacity:'item1',power:'item2',speed:'item3',fork:'item24',banana:'item23','banana-trap':'item42',smile:'item25','smile-trap':'item25'}[item.kind],m=manifest[key],x=OX+(item.x+.5)*T,y=OY+(item.y+.5)*T;
+    const key={capacity:'item1',power:'item2',speed:'item3',fork:'item24',banana:'item23','banana-trap':'item42',smile:'item25','smile-trap':'item25',rose:'item301',chest:'item213',luckybag:'item202',kubi:'item98'}[item.kind],m=manifest[key],x=OX+(item.x+.5)*T,y=OY+(item.y+.5)*T;
     ctx.save();ctx.fillStyle='#e9fbff66';ctx.fillRect(x-17,y-17,34,34);ctx.strokeStyle='#8be8ff';ctx.setLineDash([3,3]);ctx.strokeRect(x-18,y-18,36,36);ctx.restore();
     sprite(key,x-m.w/2,y-m.h/2,now/130,1,.9);
   }
@@ -336,20 +381,29 @@ function render(now){
   for(const item of state.items||[]){
     if(!item.flight||item.availableAt<=state.time)continue;
     const f=item.flight,t=Math.max(0,Math.min(1,(state.time-f.born)/f.duration));
-    const key={capacity:'item1',power:'item2',speed:'item3'}[item.kind],m=manifest[key];if(!m)continue;
+    const key={capacity:'item1',power:'item2',speed:'item3','smile-trap':'item25',rose:'item301',chest:'item213',luckybag:'item202',kubi:'item98'}[item.kind],m=manifest[key];if(!m)continue;
     const x=OX+(f.x+(item.x+.5-f.x)*t)*T;
     const y=OY+(f.y+(item.y+.5-f.y)*t)*T-(48+Math.min(40,Math.hypot(item.x+.5-f.x,item.y+.5-f.y)*4))*4*t*(1-t);
     sprite(key,x-m.w/2,y-m.h/2,now/130);
   }
+  // 原版怪物血条：贴在 boss 头上，不占顶部 HUD。画在所有 actor 之后，墙和火焰盖不住它。
+  if(state.mode==='water11'&&state.boss&&state.boss.hp>0&&!hiddenInWater(map,state.boss)){
+    const b=state.boss,plate=manifest['boss-hp-plate'],bar=manifest['boss-hp'],x=OX+b.x*T;
+    // 帧号 = 血量 - 1（10 滴血对 10 帧）。锚定格子而不是动画帧，走动时不会上下抖。
+    // 分两帧画：misc196 是 41x8 的深色底板，比 39x6 的血条各边大 1 像素。
+    const top=Math.max(2,OY+b.y*T-61);
+    if(plate)sprite('boss-hp-plate',x-plate.w/2,top);
+    if(bar)sprite('boss-hp',x-bar.w/2,top+1,b.hp-1);
+  }
   // Shield follows the same server timer as invulnerability, above terrain.
   for(const p of state.players){
-    if(p.status!=='alive'||state.state!=='playing'||!(state.time<p.shieldUntil||(state.practice&&p.mods?.invincible)))continue;
+    if(hiddenInWater(map,p)||p.status!=='alive'||state.state!=='playing'||!(state.time<p.shieldUntil||(state.practice&&p.mods?.invincible)))continue;
     const m=manifest['spawn-halo'],pos=rendered.get(p.id)||p;
     const age=p.shieldUntil<1e8?Math.max(0,state.time-(p.shieldUntil-RULES.shield)):state.time;
     if(m)sprite('spawn-halo',OX+pos.x*T-m.w/2,OY+pos.y*T-20-m.h/2-standingLift(p),age*10,1,.8);
   }
   for(const p of state.players){
-    const age=state.time-(p.respawnAt-RULES.respawn);
+    const age=state.time-(p.diedAt??(p.respawnAt-RULES.respawn));
     if(p.status==='dead'&&age>=0&&age<2)sprite(p.team===0?'death-cry':'death-cry-blue',OX+p.x*T-50,OY+p.y*T-64,age*2);
     if(p.status!=='dead'&&p.emoteUntil>state.time){
       const key=`emote-${p.emote}`,m=manifest[key],pos=rendered.get(p.id)||p;
@@ -389,19 +443,21 @@ function render(now){
   ctx.restore();
   // Original 800x600 client frame and player list.
   sprite('dlg_playerList',609,0);sprite('dlg_statusBar',0,541);
-  const time=Math.ceil(state.remaining), clock=state.practice?'练习':`${String(Math.floor(time/60)).padStart(2,'0')}:${String(time%60).padStart(2,'0')}`;
+  const time=Math.ceil(state.remaining), clock=state.practice&&state.mode!=='water11'?'练习':`${String(Math.floor(time/60)).padStart(2,'0')}:${String(time%60).padStart(2,'0')}`;
+  if(state.practice&&state.mode!=='water11')text(clock,713,71,30,'#ffe12e');
   if(state.practice)text(clock,713,71,30,'#ffe12e');
   else for(let i=0;i<clock.length;i++)sprite('timer-digits',713-clock.length*27/2+i*27,53,'0123456789/:-+.'.indexOf(clock[i]));
-  bun(699,23,.85);text('抢包子06',750,24,12,'#e8f8ff');
+  if(state.mode==='water11')text('水面11',750,24,12,'#e8f8ff');
+  else{bun(699,23,.85);text('抢包子06',750,24,12,'#e8f8ff');}
   const red=state.players.filter(p=>p.team===0),blue=state.players.filter(p=>p.team===1);
   for(let slot=0;slot<8;slot++){
-    const p=slot<4?red[slot]:blue[slot-4],y=105+slot*51;
+    const p=state.mode==='water11'?state.players[slot]:slot<4?red[slot]:blue[slot-4],y=105+slot*51;
     const rowGradient=ctx.createLinearGradient(649,y,794,y);rowGradient.addColorStop(0,'#202630');rowGradient.addColorStop(1,'#3a4655');ctx.fillStyle=rowGradient;ctx.fillRect(649,y+2,145,46);
     ctx.fillStyle=slot<4?'#fb6871':'#73bcff';ctx.fillRect(650,y+4,2,41);
     if(p){
       sprite(`prince-${p.team===0?'red':'blue'}-stand-3`,636,y-18,0,.8,p.status==='dead'?.35:1);
       text(p.name||'毛毛',700,y+16,10,'#fff','left');
-      const status=p.status==='dead'?`${Math.max(0,Math.ceil(p.respawnAt-state.time))} 秒复活`:p.status==='trapped'?'等待营救':p.carry!==null?'正在背包':p.ready?'已准备':'毛毛';
+      const status=p.status==='dead'?(state.mode==='water11'?'阵亡 · 观战':`${Math.max(0,Math.ceil(p.respawnAt-state.time))} 秒复活`):p.status==='trapped'?'等待营救':p.carry!==null?'正在背包':p.ready?'已准备':'毛毛';
       text(status,700,y+34,8,p.carry!==null?'#ffdd6c':'#98c9e0','left',false);
       text(String(slot+1),633,y+24,15,'#e5faff');
     }else{text('等待加入',718,y+26,10,'#8fbad1','center',false)}

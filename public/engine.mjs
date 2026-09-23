@@ -1,7 +1,8 @@
 // Authoritative, deterministic gameplay. Distances are map cells, times seconds.
 // Timing constants are research-derived calibration values, not recovered original code.
+// trapPve 用于 PVE 关卡：水手会补刀困泡的人，比 PVP 多 5 秒营救窗口。
 export const RULES = Object.freeze({ tick: 1 / 120, round: 240, fuse: 3.001,
-  flame: .5, trap: 5, respawn: 10, shield: 2, speed: 5, maxSpeed: 8,
+  flame: .5, trap: 5, trapPve: 10, fuseInstant: .1, respawn: 10, shield: 2, speed: 5, maxSpeed: 8, slideSpeed: 13,
   carrySpeed: 2.4, capacity: 2, maxCapacity: 6, power: 1, maxPower: 7, phaseStart: .42, phaseEnd: .82,
   phaseDuration: .15, radius: 19/40, cornerTolerance: 6/40, maxPlayers: 8 });
 export const DIR = { right: [1, 0, 0], up: [0, -1, 1], left: [-1, 0, 2], down: [0, 1, 3] };
@@ -37,6 +38,9 @@ export class Match {
     this.buns = []; this.stored = [[3,0],[0,3]]; this.stock = [3, 3]; this.totalBuns = 6; this.events = []; this.serial = 0;
     this.countdown = 0; this.remaining = RULES.round; this.winner = null;
     this.drill = null;this.rubble=new Map();
+    // 困泡时长按模式可覆盖（WaterMatch 用 RULES.trapPve）；客户端靠快照里的同一个值
+    // 反推破泡动画已播了多久，两边必须一致。
+    this.trapDuration = RULES.trap; this.lastTrapRevision = null;
     this.rev = { blocks: 0 }; this.lastBlocksRevision = -1;
   }
   random() { this.seed = (Math.imul(this.seed, 1664525) + 1013904223) >>> 0; return this.seed / 4294967296; }
@@ -64,7 +68,7 @@ export class Match {
       trappedUntil: 0, respawnAt: 0, shieldUntil: 0, phaseUntil: 0,
       activation: null, passes: [], wallPasses: [], onWall: null,
       captures: 0, kills: 0, deaths: 0, phaseCount: 0, wallCount: 0,
-      inHouse: null, skin: 'classic',mods:{bombs:false,speed:false,power:false,invincible:false,noclip:false,reveal:false},lastBomb: -10, lastSequence: -1 };
+      inHouse: null, skin: 'classic',mods:{bombs:false,speed:false,power:false,invincible:false,noclip:false,reveal:false,instant:false},lastBomb: -10, lastSequence: -1 };
   }
   addPlayer(id, name, team) {
     const p = this.makePlayer(id, name, team);
@@ -267,7 +271,7 @@ export class Match {
     const x = Math.floor(p.x), y = Math.floor(p.y);
     if (this.solid(x, y) || this.bombAt(x, y) || this.bombs.filter(b => b.owner === p.id).length >= (unlimited?195:p.capacity)) return false;
     this.attemptPhase(p);
-    const b = { id: ++this.serial, x, y, owner: p.id, team: p.team, skin:p.skin, power:this.trainingEnabled(p,'power')?32:p.power, born: this.time, explodeAt: this.time + RULES.fuse };
+    const b = { id: ++this.serial, x, y, owner: p.id, team: p.team, skin:p.skin, power:this.trainingEnabled(p,'power')?32:p.power, born: this.time, explodeAt: this.time + (this.trainingEnabled(p,'instant')?RULES.fuseInstant:RULES.fuse) };
     this.bombs.push(b); p.lastBomb = this.time;
     b.livePower=true;
     for (const other of this.players) if (this.overlaps(other, x, y)) other.passes.push(b.id);
@@ -288,7 +292,7 @@ export class Match {
       p.dir = p.slideDir||p.input.dir;
       const [dx, dy] = DIR[p.dir];
       const speed=this.trainingEnabled(p,'speed')?60:p.carry===null?p.speed:RULES.carrySpeed;
-      const dist = (p.slideDir?10:speed*(p.slowUntil>this.time?.3:1)) * dt;
+      const dist = (p.slideDir?RULES.slideSpeed:speed*(p.slowUntil>this.time?.3:1)) * dt;
       const nx = clamp(p.x + dx * dist, ARENA_BOUNDS.left, ARENA_BOUNDS.right);
       const ny = clamp(p.y + dy * dist, ARENA_BOUNDS.top, ARENA_BOUNDS.bottom);
       let slideEnded=false;
@@ -371,7 +375,7 @@ export class Match {
       for (let n = 1; n <= bomb.power; n++) {
         const x = bomb.x + dx * n, y = bomb.y + dy * n;
         const block = this.blockAt(x, y);
-        if (this.houseCornerAt(x,y) || block === -1 || (block && !destructive(block))) break;
+        if (this.blocksFlameEdge?.(x-dx,y-dy,x,y) || this.houseCornerAt(x,y) || block === -1 || (block && !destructive(block))) break;
         affected.push({ x, y, arm: name, end: n === bomb.power });
         if (block) {
           this.setBlock(x, y, 0);
@@ -395,6 +399,9 @@ export class Match {
       const existing=this.flames.findIndex(old=>old.x===f.x&&old.y===f.y);
       if(existing>=0)this.flames[existing]=visual;else this.flames.push(visual);
     }
+    // 训练时开着「显示墙内道具」，炸墙就是为了把埋着的道具取出来，不该顺手把
+    // 地上的道具一起炸掉。关掉这个 mod 就恢复原版的销毁规则。
+    if(!this.trainingEnabled(this.players[0],'reveal'))
     this.items=this.items.filter(i=>(i.availableAt??0)>this.time||!affected.some(f=>f.x===i.x&&f.y===i.y));
     // Native damage is a single explosion impact. The remaining flame lifetime
     // is animation only: walking through a freshly destroyed wall is safe.
@@ -406,7 +413,7 @@ export class Match {
   }
   trapPlayer(p,owner){
     if(this.trainingEnabled(p,'invincible'))return;
-    p.status='trapped';p.trappedUntil=this.time+RULES.trap;p.trappedBy=owner;
+    p.status='trapped';p.trappedUntil=this.time+this.trapDuration;p.trappedBy=owner;
     p.moving=false;p.activation=null;this.dropBun(p);this.event('trap',{player:p.id});
   }
   dropBun(p) {
@@ -465,6 +472,8 @@ export class Match {
     if(item.kind==='fork')p.forks=(p.forks||0)+1;
     if(item.kind==='banana')p.bananas=(p.bananas||0)+1;
     if(item.kind==='banana-trap'){
+      // 打滑会把笑脸的减速一起甩掉：两个负面道具互相抵消。
+      p.slowUntil=0;
       p.slideDir=p.slideDir||p.input.dir||p.dir;
       p.slideInput=p.input.dir;p.input.dir=null;p.actions=[];p.activation=null;p.recentActivation=null;
     }
@@ -513,7 +522,7 @@ export class Match {
   }
   trainingEnabled(p,key){return this.practice&&this.players.length===1&&p.mods?.[key]===true;}
   setTrainingMod(id,key,value){
-    if(!this.practice||this.players.length!==1||!['bombs','speed','power','invincible','noclip','reveal'].includes(key)||typeof value!=='boolean')return false;
+    if(!this.practice||this.players.length!==1||!['bombs','speed','power','invincible','noclip','reveal','instant'].includes(key)||typeof value!=='boolean')return false;
     const p=this.players.find(p=>p.id===id);if(!p)return false;p.mods[key]=value;
     if(key==='invincible'&&value&&p.status!=='alive')this.spawn(p);
     if(key==='noclip'&&!value&&!this.canStand(p,p.x,p.y)){
@@ -604,8 +613,12 @@ export class Match {
     // 砖块仅在变化时下发：这是快照里最大的静态字段，每帧重发会占掉约三成带宽
     const includeBlocks = this.rev.blocks !== this.lastBlocksRevision;
     if (includeBlocks) this.lastBlocksRevision = this.rev.blocks;
+    // 困泡时长同理：整局恒定，只在首次（或换模式时）下发一次
+    const includeTrap = this.trapDuration !== this.lastTrapRevision;
+    if (includeTrap) this.lastTrapRevision = this.trapDuration;
     return { time: this.time, state: this.state, practice: this.practice, drill: this.drill,
       remaining: this.remaining, countdown: this.countdown, winner: this.winner, reason: this.reason,
+      trapDuration: includeTrap ? this.trapDuration : undefined,
       stock: this.stock,stored:this.stored,captured:[this.stored[0][1],this.stored[1][0]],totalBuns:this.totalBuns,
       blocksRevision: this.rev.blocks, blocks: includeBlocks ? this.blocks : undefined,
       bombs: this.bombs, flames: this.flames,
