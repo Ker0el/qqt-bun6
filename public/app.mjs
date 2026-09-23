@@ -17,7 +17,7 @@ $('loading').hidden = true; $('home-panel').hidden = false;
 const demo = new Match(map);
 let state = demo.snapshot(), socket, myId = null, roomCode = null, hostId = null;
 let sequence = 0, keys = [], seenEvent = 0, localEffects = [], debug = false;
-let sound = true, bgm, toastTimer, lastStateAt = performance.now(), previousFrame = performance.now();
+let sound = true, bgm, result, wasFinished = false, toastTimer, lastStateAt = performance.now(), previousFrame = performance.now();
 // 本机玩家视觉预测：按住方向键时立即位移，服务器确认后平滑收敛。
 // maxLead 限制视觉位置最多超前权威位置多少格（0.75 格≈30px，足以消除往返延迟的粘滞感，
 // 又不会在撞墙时滑出去）；reconcile 越大归位越快，过大则收敛会显得突兀。
@@ -65,6 +65,14 @@ function send(data) { if (socket?.readyState === WebSocket.OPEN) { if(data.type=
 function play(name, volume = .35) {
   if (!sound) return;
   const a = new Audio(`/assets/${name}`); a.volume = volume; a.play().catch(() => {});
+}
+// 结算音乐（PlayerWin/PlayerLoss，约 18 秒）比普通音效长得多，必须留着引用才停得掉，
+// 否则它会一路盖着背景音乐响进下一局。
+function stopResult() { if (result) { result.pause(); result = null; } }
+function playResult(name, volume = .35) {
+  stopResult();
+  if (!sound) return;
+  result = new Audio(`/assets/${name}`); result.volume = volume; result.play().catch(() => {});
 }
 function updateMusic() {
   if (!bgm) { bgm = new Audio('/assets/match.ogg'); bgm.loop = true; bgm.volume = .18; }
@@ -120,7 +128,7 @@ function renderLobby(){
 }
 function resetHome() {
   map=bunMap;
-  roomCode=null;state=demo.snapshot();keys=[];rendered.clear();localEffects=[];predicted=null;blocksCache=null;updateMusic();
+  roomCode=null;state=demo.snapshot();keys=[];rendered.clear();localEffects=[];predicted=null;blocksCache=null;stopResult();updateMusic();
   $('home-panel').hidden=false; $('room-panel').hidden=true; $('result-panel').hidden=true; $('leave-game').hidden=true; $('footer-status').textContent='抢走对方全部包子并运回自己的包房，即可获胜。'; resetButtons();
   $('death-screen').hidden=true;if($('training-dialog').open)$('training-dialog').close();
   closeChat();chatMessages=[];renderChat();
@@ -134,7 +142,7 @@ function openChat(){release();$('chat-form').hidden=false;$('chat-panel').classL
 function closeChat(){$('chat-form').hidden=true;$('chat-panel').classList.remove('typing');canvas.focus();}
 function handleEvent(e) {
   if(e.type==='boss-loot'&&e.player===myId)toast('获得'+({rose:'玫瑰花',chest:'宝箱',luckybag:'福袋',kubi:'酷比'}[e.kind]));
-  if (e.type === 'start') { play('ReadyGo.wav',.5); countdownSound=true; }
+  if (e.type === 'start') { stopResult(); play('ReadyGo.wav',.5); countdownSound=true; }
   if (e.type === 'bomb'&&e.player===myId) play('place.wav',.28);
   if (e.type === 'explode'&&performance.now()-lastExplosionSound>60){play('bomb.wav',.25);lastExplosionSound=performance.now();}
   if(e.type==='death')play('trapped-pop.wav',.3);
@@ -148,7 +156,7 @@ function handleEvent(e) {
   if (e.type === 'recover' && e.player===myId) toast(e.own?'捡回己方包子，带回自己的包子铺！':'捡到包子，带回自己的包子铺！');
   if (e.type === 'return-bun') toast(`${e.team===0?'红队':'蓝队'} 护送包子回家了！`);
   if (e.type === 'enter-house' && e.player===myId) toast('已进入包子房 · 蓝色箭头标记你的位置');
-  if (e.type === 'finish') { const me=state.players.find(p=>p.id===myId);play(me?.team===e.winner?'PlayerWin.ogg':'PlayerLoss.ogg',.35); }
+  if (e.type === 'finish') { const me=state.players.find(p=>p.id===myId);playResult(me?.team===e.winner?'PlayerWin.ogg':'PlayerLoss.ogg',.35); }
 }
 function roster(target, team) {
   const list=$(target); list.replaceChildren();
@@ -166,6 +174,7 @@ function roster(target, team) {
 }
 function updateUI() {
   const lobby=state.state==='lobby', finished=state.state==='finished';
+  if(wasFinished&&!finished)stopResult();wasFinished=finished;
   $('home-panel').hidden=true; $('room-panel').hidden=!lobby; $('result-panel').hidden=!finished; $('leave-game').hidden=lobby;
   const self=state.players.find(p=>p.id===myId);
   const water=state.mode==='water11';
@@ -220,7 +229,7 @@ $('copy-invite').onclick=async()=>{
   try{await navigator.clipboard.writeText(`${location.origin}/?room=${roomCode}`);toast('邀请链接已复制；局域网朋友请使用房主局域网地址')}
   catch{toast(`房间号：${roomCode}`)}
 };
-$('sound-button').onclick=()=>{sound=!sound;$('sound-button').textContent=`声音：${sound?'开':'关'}`;updateMusic();if(sound)play('uiNormal.wav');canvas.focus()};
+$('sound-button').onclick=()=>{sound=!sound;if(!sound)stopResult();$('sound-button').textContent=`声音：${sound?'开':'关'}`;updateMusic();if(sound)play('uiNormal.wav');canvas.focus()};
 $('fullscreen-button').onclick=()=>{if(document.fullscreenElement)document.exitFullscreen();else document.querySelector('.game-frame').requestFullscreen().catch(()=>toast('当前浏览器不支持全屏'));canvas.focus()};
 $('help-button').onclick=()=>{release();$('help-dialog').showModal()};
 $('close-help').onclick=()=>{$('help-dialog').close();canvas.focus()};
