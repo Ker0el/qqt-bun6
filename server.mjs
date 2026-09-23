@@ -55,8 +55,10 @@ function publishLobby(force=false){
   const packet=lobbyPacket(),signature=JSON.stringify(packet);if(!force&&signature===lastDirectory)return;
   lastDirectory=signature;for(const ws of wss.clients)send(ws,packet);
 }
-function publish(room) {
+function publish(room, forceBlocks = false) {
   const packet = { type: 'state', room: room.code, host: room.host, ...room.match.snapshot() };
+  // 中途加入的客户端本地没有地图，必须补发一次完整 blocks
+  if (forceBlocks && !packet.blocks) packet.blocks = room.match.blocks;
   for (const ws of room.clients.values()) send(ws, packet);
 }
 function leave(ws) {
@@ -113,7 +115,7 @@ wss.on('connection', ws => {
         send(ws, { type: 'joined', room: room.code, id: ws.pid, practice: room.match.practice });
         send(ws,{type:'chat-history',scope:'room',messages:room.chat||[]});
         if (room.match.practice) room.match.start();
-        publish(room);publishLobby(); return;
+        publish(room, true); publishLobby(); return;
       }
       const room = ws.room; if (!room) return;
       const p = room.match.players.find(p => p.id === ws.pid); if (!p) return;

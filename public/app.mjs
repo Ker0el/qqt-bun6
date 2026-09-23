@@ -16,6 +16,9 @@ let state = demo.snapshot(), socket, myId = null, roomCode = null, hostId = null
 let sequence = 0, keys = [], seenEvent = 0, localEffects = [], debug = false;
 let sound = true, bgm, toastTimer, lastStateAt = performance.now(), previousFrame = performance.now();
 let rendered = new Map(), countdownSound = false, lastUI = '', reconnectTimer;
+// 服务器只在砖块变化时下发 blocks，客户端缓存上一份
+let blocksCache = null;
+const blocks = () => blocksCache || state.blocks;
 let directory={online:0,rooms:[]};
 let chatMessages=[],lastExplosionSound=-1000;
 document.querySelector('.meter-window').style.left=`${RULES.phaseStart*100}%`;
@@ -74,6 +77,7 @@ function connect() {
       localStorage.setItem('qqt-name', $('nickname').value.trim()); updateMusic(); resetButtons();
     }
     if (msg.type === 'state') {
+      if (msg.blocks) blocksCache = msg.blocks;
       state = msg; hostId = msg.host; lastStateAt = performance.now();
       for (const event of msg.events) if (event.id > seenEvent) { handleEvent(event); seenEvent = event.id; }
       updateUI();
@@ -242,7 +246,7 @@ window.addEventListener('blur',release);document.addEventListener('visibilitycha
 canvas.addEventListener('pointerdown',()=>canvas.focus());
 
 const OX=8, OY=22, T=40;
-function standingLift(p){if(p.renderLayer!=='wall'||!p.renderWallCell)return 0;const[x,y]=p.renderWallCell.split(',').map(Number);return Math.max(0,(manifest[`tile${state.blocks[y*15+x]-8000}`]?.h||40)-40)}
+function standingLift(p){if(p.renderLayer!=='wall'||!p.renderWallCell)return 0;const[x,y]=p.renderWallCell.split(',').map(Number);return Math.max(0,(manifest[`tile${blocks()[y*15+x]-8000}`]?.h||40)-40)}
 function playerSprite(p, x, y, time, alpha=1){
   const team=p.team===0?'red':'blue',action=p.moving?'walk':'stand',dir=DIR[p.dir]?.[2]??3;
   const lift=standingLift(p);
@@ -279,7 +283,7 @@ function render(now){
   }
   const drawables=[];
   for(let y=0;y<13;y++)for(let x=0;x<15;x++){
-    const tile=state.blocks[y*15+x];if(tile>0)drawables.push({z:y+.8,type:'tile',tile:tile-8000,x,y});
+    const tile=blocks()[y*15+x];if(tile>0)drawables.push({z:y+.8,type:'tile',tile:tile-8000,x,y});
     const building=map.structures[y*15+x];if(building>0)drawables.push({z:y+2.7,type:'building',tile:building-8000,x,y});
   }
   for(const b of state.bombs){

@@ -20,9 +20,11 @@ export class Match {
     this.buns = []; this.stored = [[3,0],[0,3]]; this.stock = [3, 3]; this.totalBuns = 6; this.events = []; this.serial = 0;
     this.countdown = 0; this.remaining = RULES.round; this.winner = null;
     this.drill = null;this.rubble=new Map();
+    this.rev = { blocks: 0 }; this.lastBlocksRevision = -1;
   }
   random() { this.seed = (Math.imul(this.seed, 1664525) + 1013904223) >>> 0; return this.seed / 4294967296; }
   event(type, data = {}) { this.events.push({ id: ++this.serial, type, time: this.time, ...data }); this.events = this.events.slice(-50); }
+  setBlock(x, y, value) { this.blocks[y * 15 + x] = value; this.rev.blocks++; }
   addPlayer(id, name, team) {
     const p = { id, name, team, ready: false, x: 0, y: 0, dir: 'down', moving: false,
       input: { dir: null }, actions: [], status: 'alive', speed: RULES.speed,
@@ -57,6 +59,7 @@ export class Match {
     this.autoWin=null;
     this.rubble.clear();
     this.time = 0; this.blocks = [...this.map.blocks]; this.bombs = []; this.flames = [];
+    this.rev.blocks++; // 开局重建地图，必须让客户端重新拿到 blocks
     this.items = []; this.buns = []; this.stored=[[3,0],[0,3]]; this.stock=[3,3];this.totalBuns=6;this.remaining=RULES.round;
     this.hiddenItems=[];
     for(const p of this.players)p.collected={capacity:0,power:0,speed:0};
@@ -336,7 +339,7 @@ export class Match {
         if (this.houseCornerAt(x,y) || block === -1 || (block && !destructive(block))) break;
         affected.push({ x, y, arm: name, end: n === bomb.power });
         if (block) {
-          this.blocks[y * 15 + x] = 0;
+          this.setBlock(x, y, 0);
           this.rubble.set(cell(x,y),this.time+.2);
           this.event('break', { x, y, tile: block - 8000 });
           const buried=this.hiddenItems.find(i=>i.x===x&&i.y===y);
@@ -510,18 +513,18 @@ export class Match {
     if (mode === 'map') return true;
     if (mode === 'house') { p.x=5.5;p.y=4.5;p.dir='up';return true; }
     // Practice fixtures occupy the existing central courtyard; the actual match map stays intact.
-    for (let y = 4; y <= 8; y++) for (let x = 3; x <= 11; x++) this.blocks[y * 15 + x] = 0;
+    for (let y = 4; y <= 8; y++) for (let x = 3; x <= 11; x++) this.setBlock(x, y, 0);
     this.hiddenItems=this.hiddenItems.filter(i=>destructive(this.blockAt(i.x,i.y)));
     if (mode === 'wall3') {
       Object.assign(p,{x:7.5,y:7.5,dir:'right',shieldUntil:1e9,capacity:3});
       for(const [x,y]of [[8,7],[8,6]])this.bombs.push({id:++this.serial,x,y,owner:'practice',team:1,power:2,born:this.time,explodeAt:1e9});
-      this.blocks[6*15+7]=8005;this.event('drill',{mode});return true;
+      this.setBlock(7,6,8005);this.event('drill',{mode});return true;
     }
     Object.assign(p, { x: ['wall','pillar'].includes(mode) ? 7.04 : 7.5, y:mode==='run'?10.5:7.5, dir: 'up', shieldUntil: 1e9 });
-    if(mode==='run')for(let y=7;y<=11;y++)this.blocks[y*15+7]=0;
+    if(mode==='run')for(let y=7;y<=11;y++)this.setBlock(7,y,0);
     this.bombs.push({ id: ++this.serial, x: 7, y: 6, owner: 'practice', team: 1, power: 2, born: this.time, explodeAt: 1e9 });
-    if (mode === 'wall') this.blocks[6 * 15 + 6] = 8005;
-    if (mode === 'pillar') this.blocks[6 * 15 + 6] = 8006;
+    if (mode === 'wall') this.setBlock(6,6,8005);
+    if (mode === 'pillar') this.setBlock(6,6,8006);
     this.event('drill', { mode }); return true;
   }
   tick(dt = RULES.tick) {
@@ -563,9 +566,14 @@ export class Match {
     }
   }
   snapshot() {
+    // 砖块仅在变化时下发：这是快照里最大的静态字段，每帧重发会占掉约三成带宽
+    const includeBlocks = this.rev.blocks !== this.lastBlocksRevision;
+    if (includeBlocks) this.lastBlocksRevision = this.rev.blocks;
     return { time: this.time, state: this.state, practice: this.practice, drill: this.drill,
       remaining: this.remaining, countdown: this.countdown, winner: this.winner, reason: this.reason,
-      stock: this.stock,stored:this.stored,captured:[this.stored[0][1],this.stored[1][0]],totalBuns:this.totalBuns, blocks: this.blocks, bombs: this.bombs, flames: this.flames,
+      stock: this.stock,stored:this.stored,captured:[this.stored[0][1],this.stored[1][0]],totalBuns:this.totalBuns,
+      blocksRevision: this.rev.blocks, blocks: includeBlocks ? this.blocks : undefined,
+      bombs: this.bombs, flames: this.flames,
       items: this.items,hiddenItems:this.players[0]&&this.trainingEnabled(this.players[0],'reveal')?this.hiddenItems.filter(i=>this.blockAt(i.x,i.y)>0):[],buns: this.buns, events: this.events.slice(-24),
       players: this.players.map(({ input, actions, lastSequence, passes, wallPasses, mountTarget, ...p }) => p) };
   }
