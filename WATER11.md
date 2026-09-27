@@ -49,5 +49,5 @@ https://qqtang.52pk.com/shtml/89480.shtml
 
 `test/browser-smoke.mjs` / `browser-extras.mjs` / `browser-training.mjs` **已失效**：提交 `7498e96`「简化界面并放大整体尺寸」删掉了训练面板的穿泡/借泡/上柱等按钮，这三个测试还在按旧界面找元素。与水面11 无关，待定夺是改测试还是删。
 
-本次修改在本地验证，未执行云端发布。改前完整备份在 `C:/Users/Star/Documents/Codex/2026-09-14/new-chat/backups/qqt-web-20260924-014146/`（含 `RESTORE.md`）。
+本次修改已在本地验证并发布到线上。
 
