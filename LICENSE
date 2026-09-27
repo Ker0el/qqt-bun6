@@ -19,30 +19,3 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-
-================================================================================
-NOTICE — 关于第三方素材（重要）
-================================================================================
-
-上述 MIT 许可证仅适用于本项目的**源代码**，即除 public/assets/ 目录以外的
-全部内容（包括服务端、客户端脚本、样式、测试与工具脚本）。
-
-public/assets/ 目录下的美术、音频与字体素材提取自原版《QQ堂》客户端，
-其著作权归腾讯公司所有，**不在上述 MIT 许可证的授权范围内**。
-
-本项目对这些素材不作任何权利主张，其随源码一并提供仅出于学习与技术交流
-目的。任何人对这些素材的使用，均需自行承担相应责任。
-
-若权利人认为本项目侵犯其权益，请通过项目 Issue 联系，相关素材或整个仓库
-将立即删除。
-
---------------------------------------------------------------------------------
-The MIT license above applies ONLY to the source code of this project (all
-files except the public/assets/ directory).
-
-All artwork, audio and font assets under public/assets/ are extracted from the
-original "QQ堂" (QQ Tang) game client and are the property of Tencent. They are
-NOT covered by the MIT license, and no claim is made over them. They are
-included solely for learning and technical exchange.
-
-For the full disclaimer, see the README.
