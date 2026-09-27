@@ -2,7 +2,7 @@
 
 # QQ堂· 星空复刻版
 
-**《QQ堂》经典玩法「抢包山 6」的网页复刻 —— 浏览器打开即玩，支持 2–8 人实时联机**
+**《QQ堂》经典玩法「抢包山 6 和 水面11」的网页复刻 —— 浏览器打开即玩，支持 2–8 人实时联机**
 
 [![Node.js](https://img.shields.io/badge/Node.js-%E2%89%A5%2022-339933?logo=node.js&logoColor=white)](https://nodejs.org)
 [![Tests](https://img.shields.io/badge/tests-89%20passing-3fb950)](test/)
