@@ -18,7 +18,7 @@ const lobbyChat=[];
 // 部署侧配置：.runtime/config.json 优先于环境变量，便于在无法注入 env 的托管环境（如宝塔）下设置来源校验
 let fileConfig={};
 try { fileConfig=JSON.parse(readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), '.runtime/config.json'),'utf8')); } catch {}
-const mime = { '.html': 'text/html; charset=utf-8', '.css': 'text/css', '.mjs': 'text/javascript', '.js': 'text/javascript', '.png': 'image/png', '.json': 'application/json', '.wav': 'audio/wav', '.ogg': 'audio/ogg', '.ico': 'image/x-icon' };
+const mime = { '.html': 'text/html; charset=utf-8', '.css': 'text/css', '.mjs': 'text/javascript', '.js': 'text/javascript', '.png': 'image/png', '.json': 'application/json', '.wav': 'audio/wav', '.ogg': 'audio/ogg', '.ico': 'image/x-icon', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.svg': 'image/svg+xml', '.txt': 'text/plain; charset=utf-8', '.xml': 'application/xml' };
 const port = Number(fileConfig.port || process.env.PORT || 8787);
 const publicOrigin=String(fileConfig.publicOrigin ?? process.env.PUBLIC_ORIGIN ?? '').replace(/\/$/,'');
 const addresses = Object.entries(os.networkInterfaces()).flatMap(([name, entries]) => entries.map(x => ({...x,name})))
@@ -31,7 +31,7 @@ const server = http.createServer(async (req, res) => {
     if(url.pathname==='/api/health'){res.writeHead(200,{'content-type':'application/json'});res.end(JSON.stringify({ok:true,version:'0.6.0'}));return;}
     if(url.pathname==='/api/rooms'){res.writeHead(200,{'content-type':'application/json','cache-control':'no-store'});res.end(JSON.stringify(lobbyPacket()));return;}
     if (url.pathname === '/api/info') {
-      res.writeHead(200, { 'content-type': 'application/json' }); res.end(JSON.stringify({ game: 'qqt-bun6-local', addresses:publicOrigin?[publicOrigin]:addresses, port, version: '0.6.0', map: map.name })); return;
+      res.writeHead(200, { 'content-type': 'application/json' }); res.end(JSON.stringify({ game: 'qqt-star-remake', addresses:publicOrigin?[publicOrigin]:addresses, port, version: '0.6.0', map: map.name })); return;
     }
     const relative = decodeURIComponent(url.pathname === '/' ? '/index.html' : url.pathname);
     const filename = path.resolve(root, '.' + relative);

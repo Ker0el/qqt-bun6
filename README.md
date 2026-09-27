@@ -52,9 +52,15 @@
 
 ## 这是什么
 
-《QQ堂》是腾讯 2004 年上线的休闲竞技网游，已于 2022 年 4 月停服。「抢包山」是其经典玩法之一：双方各守住一间包子房，进入对方房内夺取包子并背回自家即得分，先抢齐对方全部包子的一方获胜。
+**QQ堂网页版 —— 免下载、免安装，打开浏览器就能玩。**
 
-**抢包山 6** 是该玩法的经典地图。本项目把它完整重制成了网页版：
+《QQ堂》是腾讯 2004 年上线的休闲竞技网游，已于 2022 年 4 月停服。本项目把它最经典的玩法重制成了浏览器版本：不用下载客户端、不用装模拟器，发一条链接就能和朋友联机对战。
+
+**「抢包山 6」** 是其中的经典地图玩法：双方各守一间包子房，进入对方房内夺取包子并背回自家，先抢齐对方全部包子的一方获胜。另含 **「水面 11」** 的 1–5 人 PVE 合作模式。
+
+<sub>English: a browser-based remake of **QQ Tang**'s classic "Bump Battle / 抢包山" mode — no client download, real-time multiplayer in the browser.</sub>
+
+本项目把它完整重制成了网页版：
 
 - **纯浏览器运行** —— 前端原生 Canvas，无任何前端框架与构建步骤
 - **服务端权威** —— 所有移动、放泡、判定、AI 全部跑在 Node 服务端，客户端只负责渲染与输入
@@ -67,12 +73,12 @@
 
 <table>
 <tr>
-<td width="50%"><img src="docs/screenshots/multiplayer.webp" alt="多人对战"><br><div align="center"><sub><b>红蓝两军对垒</b> —— 2–8 人实时联机，双方人数相等且准备后开局</sub></div></td>
-<td width="50%"><img src="docs/screenshots/practice.webp" alt="单人练习场"><br><div align="center"><sub><b>单人练习场</b> —— 自由练习走位、放泡与抢包，不展示在公共大厅</sub></div></td>
+<td width="50%"><img src="docs/screenshots/multiplayer.webp" alt="QQ堂网页版抢包山 6 双人对战：红蓝两队在地图上对垒"><br><div align="center"><sub><b>红蓝两军对垒</b> —— 2–8 人实时联机，双方人数相等且准备后开局</sub></div></td>
+<td width="50%"><img src="docs/screenshots/practice.webp" alt="QQ堂网页版单人练习场"><br><div align="center"><sub><b>单人练习场</b> —— 自由练习走位、放泡与抢包，不展示在公共大厅</sub></div></td>
 </tr>
 <tr>
-<td width="50%"><img src="docs/screenshots/water11.webp" alt="水面11 PVE"><br><div align="center"><sub><b>水面 11（PVE）</b> —— 1–5 人合作，击败海盗水手，十帧血条挂在头顶</sub></div></td>
-<td width="50%"><img src="docs/screenshots/training-mod.webp" alt="训练 MOD"><br><div align="center"><sub><b>训练 MOD</b> —— 按 F2 呼出，无限泡弹 / 速度 / 威力 / 无敌 / 穿墙 / 秒炸</sub></div></td>
+<td width="50%"><img src="docs/screenshots/water11.webp" alt="QQ堂水面 11 PVE 合作模式：海盗水手与头顶十帧血条"><br><div align="center"><sub><b>水面 11（PVE）</b> —— 1–5 人合作，击败海盗水手，十帧血条挂在头顶</sub></div></td>
+<td width="50%"><img src="docs/screenshots/training-mod.webp" alt="QQ堂网页版单人训练 MOD 菜单"><br><div align="center"><sub><b>训练 MOD</b> —— 按 F2 呼出，无限泡弹 / 速度 / 威力 / 无敌 / 穿墙 / 秒炸</sub></div></td>
 </tr>
 </table>
 
