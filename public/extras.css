@@ -11,13 +11,6 @@
 #chat-form span{font-size:13px;color:#397ca1;padding:0 3px;white-space:nowrap}
 #chat-input{flex:1;padding:7px 8px;font-size:15px;height:34px;min-width:0}
 #chat-form button{min-height:34px;padding:5px 9px}
-.toolbar-actions .support-button{color:#ffdc89;border-color:#c79b4966;background:#76551a22}
-.toolbar-actions .support-button:hover{background:#bc842d33}
-#support-dialog{width:356px}
-.support-content{text-align:center;padding:17px}
-.support-content p{margin:0 0 12px;font-size:13px;color:#46728d}
-.support-content img{display:block;max-width:100%;height:auto;margin:0 auto;border-radius:5px;background:#fff}
-.support-content .support-note{margin:12px 0 0;font-size:11px;color:#789aaa}
 @keyframes chat-fade{0%,65%{opacity:1}100%{opacity:.3}}
 @media(max-width:760px){.chat-panel{font-size:13px}.chat-log{max-height:96px}.toolbar-actions{flex-wrap:wrap}}
 @font-face{font-family:QQTangSong;src:url('/assets/simsun.ttc') format('collection');font-display:swap}

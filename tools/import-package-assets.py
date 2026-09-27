@@ -1,6 +1,6 @@
 """Read selected DIMG artwork from a verified QQTang-Local release archive.
-Format details cross-checked against kuuhaku1314/qqtang (Apache-2.0),
-internal/game/itemcatalog/archive.go and dimg.go. Does not execute client code.
+DIMG container layout is parsed from the frame headers alone; no client code is
+executed and no third-party parser is bundled.
 """
 from pathlib import Path
 from zipfile import ZipFile

@@ -235,8 +235,6 @@ $('help-button').onclick=()=>{release();$('help-dialog').showModal()};
 $('close-help').onclick=()=>{$('help-dialog').close();canvas.focus()};
 $('chat-form').onsubmit=e=>{e.preventDefault();const message=$('chat-input').value.trim();if(message&&!send({type:'chat',name:nickname(),text:message}))return;$('chat-input').value='';closeChat();};
 $('chat-input').addEventListener('keydown',e=>{e.stopPropagation();if(e.key==='Escape'){e.preventDefault();closeChat()}});
-$('support-button').onclick=()=>{release();closeChat();$('support-dialog').showModal()};
-$('close-support').onclick=()=>{$('support-dialog').close();canvas.focus()};
 document.addEventListener('click',e=>{const button=e.target.closest('button');if(button&&button.id!=='sound-button')play('uiMain.wav',.12)});
 $('close-training').onclick=()=>{$('training-dialog').close();canvas.focus()};
 for(const checkbox of document.querySelectorAll('[data-mod]'))checkbox.onchange=()=>send({type:'training-mod',key:checkbox.dataset.mod,enabled:checkbox.checked});
@@ -247,9 +245,9 @@ const keyMap={ArrowUp:'up',KeyW:'up',ArrowDown:'down',KeyS:'down',ArrowLeft:'lef
 function input(bomb=false){if(roomCode&&socket?.readyState===1)socket.send(JSON.stringify({type:'input',seq:++sequence,dir:keys.length?keyMap[keys.at(-1)]:null,bomb}))}
 function release(){keys=[];input()}
 window.addEventListener('keydown',e=>{
-  if(e.code==='Enter'&&!['INPUT','TEXTAREA','BUTTON','SELECT'].includes(document.activeElement?.tagName)&&!$('help-dialog').open&&!$('training-dialog').open&&!$('support-dialog').open){e.preventDefault();openChat();return;}
+  if(e.code==='Enter'&&!['INPUT','TEXTAREA','BUTTON','SELECT'].includes(document.activeElement?.tagName)&&!$('help-dialog').open&&!$('training-dialog').open){e.preventDefault();openChat();return;}
   if(e.code==='F2'){e.preventDefault();if(!state.practice||!roomCode){toast('F2 菜单仅在单人训练中可用');return}release();if($('training-dialog').open)$('training-dialog').close();else $('training-dialog').showModal();return;}
-  if(['INPUT','TEXTAREA'].includes(document.activeElement?.tagName)||$('help-dialog').open||$('training-dialog').open||$('support-dialog').open||!roomCode||!['playing','countdown'].includes(state.state))return;
+  if(['INPUT','TEXTAREA'].includes(document.activeElement?.tagName)||$('help-dialog').open||$('training-dialog').open||!roomCode||!['playing','countdown'].includes(state.state))return;
   if(keyMap[e.code]){e.preventDefault();if(!keys.includes(e.code)){keys.push(e.code);input()}}
   if(e.code==='Space'){e.preventDefault();if(!e.repeat||(state.practice&&state.players.find(p=>p.id===myId)?.mods?.bombs))input(true)}
   if((e.code==='Digit1'||e.code==='Numpad1')&&!e.repeat){e.preventDefault();socket?.send(JSON.stringify({type:'use-fork'}))}

@@ -92,8 +92,6 @@ for direction in ['C','U','D','L','R']:
     if sources:save_atlas(f'flame-custom-{direction}',[Image.open(p).convert('RGBA') for p in sources],70)
 for source,target in [(CLIENT/'object/ui/cursor/fight.gif','cursor-fight.png'),(OBJ/'ui/cursor/dianji.gif','cursor-hand.png')]:
     if source.exists():Image.open(source).convert('RGBA').save(DEST/target)
-support=Path('D:/333/zs.png')
-if support.exists():shutil.copy2(support,DEST/'support.png')
 
 b=(RES/'map/bun06_8.map').read_bytes(); header=struct.unpack_from('<5i',b)
 layers=struct.unpack_from('<585i',b,20)

@@ -15,7 +15,6 @@
 - 用户界面元素（`dlg_*.png`、`gameTop.png`、`timer-digits.png`、光标、图标等）
 - 音效与音乐（`*.wav`、`*.ogg`，含 `match.ogg`、`PlayerWin.ogg`、`PlayerLoss.ogg`）
 - 字体（`simsun.ttc`、`century.ttf`）
-- 打赏码图片（`support.png`，作者本人提供）
 
 均**提取自原版《QQ堂》客户端**，**著作权归腾讯公司所有**。
 
@@ -29,13 +28,8 @@
 本项目**不附带**原版客户端文件。`tools/` 下的导入脚本用于从**你自备的**客户端数据
 文件中提取素材，不含任何原始游戏资源。
 
-## 关于第三方参考仓库
-
-[`kuuhaku1314/qqtang`](https://github.com/kuuhaku1314/qqtang) 的 Apache-2.0 许可原文见
-[`licenses/`](licenses/)。**该代码许可不改变、也不适用于**原版《QQ堂》素材的权属 ——
-这一点在该仓库的 `README-DEV.md` 中亦有明确说明。
-
 ## 权利主张与下架
 
-若权利人认为本项目侵犯其合法权益，请通过 [Issue](../../issues) 联系，
+若权利人认为本项目侵犯其合法权益，请通过
+[Issue](https://github.com/Ker0el/qqt-bun6/issues) 联系，
 相关素材或**整个仓库将立即删除**。

@@ -1,9 +1,9 @@
 {
-  "name": "qqt-bun6-local",
+  "name": "qqt-star-remake",
   "version": "0.6.0",
   "private": true,
   "type": "module",
-  "description": "QQ堂抢包山6本地网页复刻",
+  "description": "QQ堂· 星空复刻版 —— 抢包山 6 的网页复刻",
   "scripts": {
     "start": "node server.mjs",
     "test": "node --test test/*.test.mjs"
